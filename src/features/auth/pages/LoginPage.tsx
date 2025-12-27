@@ -66,7 +66,7 @@ export const LoginPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4 transition-colors duration-200">
             <Card className="w-full max-w-md">
                 <CardHeader className="space-y-1 flex flex-col items-center">
                     <div className="bg-primary/10 p-3 rounded-full mb-2">
@@ -85,8 +85,8 @@ export const LoginPage = () => {
                                 type="button"
                                 onClick={() => setSelectedRole('student')}
                                 className={`flex flex-col items-center p-2 rounded-lg border transition-all ${selectedRole === 'student'
-                                        ? 'border-primary bg-primary/5 text-primary'
-                                        : 'border-gray-200 hover:bg-gray-50 text-gray-600'
+                                    ? 'border-primary bg-primary/5 text-primary'
+                                    : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300'
                                     }`}
                             >
                                 <GraduationCap className="h-5 w-5 mb-1" />
@@ -96,8 +96,8 @@ export const LoginPage = () => {
                                 type="button"
                                 onClick={() => setSelectedRole('teacher')}
                                 className={`flex flex-col items-center p-2 rounded-lg border transition-all ${selectedRole === 'teacher'
-                                        ? 'border-primary bg-primary/5 text-primary'
-                                        : 'border-gray-200 hover:bg-gray-50 text-gray-600'
+                                    ? 'border-primary bg-primary/5 text-primary'
+                                    : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300'
                                     }`}
                             >
                                 <UserCircle className="h-5 w-5 mb-1" />
@@ -107,8 +107,8 @@ export const LoginPage = () => {
                                 type="button"
                                 onClick={() => setSelectedRole('admin')}
                                 className={`flex flex-col items-center p-2 rounded-lg border transition-all ${selectedRole === 'admin'
-                                        ? 'border-primary bg-primary/5 text-primary'
-                                        : 'border-gray-200 hover:bg-gray-50 text-gray-600'
+                                    ? 'border-primary bg-primary/5 text-primary'
+                                    : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300'
                                     }`}
                             >
                                 <ShieldCheck className="h-5 w-5 mb-1" />
@@ -117,7 +117,7 @@ export const LoginPage = () => {
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium" htmlFor="email">Email</label>
+                            <label className="text-sm font-medium dark:text-gray-200" htmlFor="email">Email</label>
                             <Input
                                 id="email"
                                 type="email"
@@ -127,7 +127,7 @@ export const LoginPage = () => {
                             {errors.email && <p className="text-xs text-red-500">{errors.email.message}</p>}
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium" htmlFor="password">Mot de passe</label>
+                            <label className="text-sm font-medium dark:text-gray-200" htmlFor="password">Mot de passe</label>
                             <Input
                                 id="password"
                                 type="password"
@@ -141,7 +141,7 @@ export const LoginPage = () => {
                     </form>
                 </CardContent>
                 <CardFooter className="flex flex-col space-y-2">
-                    <div className="text-sm text-center text-gray-500">
+                    <div className="text-sm text-center text-gray-500 dark:text-gray-400">
                         Pas encore de compte ?{' '}
                         <Link to="/register" className="text-primary hover:underline">
                             S'inscrire

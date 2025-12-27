@@ -12,11 +12,11 @@ export const SettingsPage = () => {
 
     return (
         <div className="container mx-auto max-w-4xl py-6 space-y-8">
-            <div className="flex items-center gap-3 border-b pb-4">
+            <div className="flex items-center gap-3 border-b dark:border-gray-700 pb-4">
                 <Settings className="h-8 w-8 text-primary" />
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">Paramètres</h1>
-                    <p className="text-muted-foreground text-gray-500">
+                    <p className="text-gray-500 dark:text-gray-400">
                         Gérez vos préférences et les paramètres de votre compte.
                     </p>
                 </div>
@@ -62,7 +62,7 @@ export const SettingsPage = () => {
                         <CardDescription>Gérez qui peut voir vos informations.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-sm text-gray-500">
+                        <div className="text-sm text-gray-500 dark:text-gray-400">
                             Les paramètres de confidentialité seront bientôt disponibles.
                         </div>
                     </CardContent>
