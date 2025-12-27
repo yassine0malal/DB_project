@@ -1,15 +1,20 @@
 import { create } from 'zustand';
 import { Post, Comment, Reply } from '../types';
-import { localDB } from '../../../lib/localDB';
+
+const API_URL = 'http://localhost:3000/api';
 
 type FeedFilter = 'all' | 'popular' | 'department';
 
 interface PostState {
     posts: Post[];
+    isLoading: boolean;
+    error: string | null;
     filter: FeedFilter;
     setFilter: (filter: FeedFilter) => void;
+    fetchPosts: () => Promise<void>;
+    addPost: (post: Omit<Post, 'id' | 'createdAt' | 'likesCount' | 'commentsCount' | 'sharesCount'> & { authorId: string, groupId?: string, clubId?: string }) => Promise<void>;
+    // Keep other actions as placeholders or optimistic updates for now
     setPosts: (posts: Post[]) => void;
-    addPost: (post: Post) => void;
     addComment: (postId: string, comment: Comment) => void;
     addReply: (postId: string, commentId: string, reply: Reply) => void;
     toggleLike: (postId: string) => void;
@@ -22,14 +27,26 @@ interface PostState {
 }
 
 export const usePostStore = create<PostState>((set, get) => ({
-    posts: localDB.get().posts,
+    posts: [],
+    isLoading: false,
+    error: null,
     filter: 'all',
 
     setFilter: (filter) => set({ filter }),
 
-    setPosts: (posts) => {
-        set({ posts });
-        localDB.save({ posts });
+    setPosts: (posts) => set({ posts }),
+
+    fetchPosts: async () => {
+        set({ isLoading: true, error: null });
+        try {
+            const response = await fetch(`${API_URL}/posts`);
+            if (!response.ok) throw new Error('Failed to fetch posts');
+            const data = await response.json();
+            set({ posts: data.posts, isLoading: false });
+        } catch (error) {
+            console.error(error);
+            set({ error: (error as Error).message, isLoading: false });
+        }
     },
 
     getFilteredPosts: (userDepartment) => {
@@ -50,46 +67,61 @@ export const usePostStore = create<PostState>((set, get) => ({
         return filtered;
     },
 
-    addPost: (post) => set((state) => {
-        const newPosts = [post, ...state.posts];
-        localDB.save({ posts: newPosts });
-        return { posts: newPosts };
-    }),
+    addPost: async (postData) => {
+        try {
+            const response = await fetch(`${API_URL}/posts`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(postData),
+            });
+            if (!response.ok) throw new Error('Failed to create post');
+            const newPost = await response.json();
 
-    votePoll: (postId, optionId) => set((state) => {
-        const newPosts = state.posts.map(p => {
-            if (p.id === postId && p.poll) {
-                // Remove previous vote if any
-                const prevVote = p.poll.userVote;
-                let options = p.poll.options.map(opt => ({ ...opt }));
+            // Optimistic update or refetch
+            // For now, let's just refetch or manually add to state if response is full Post
+            // Since response is partial, we need to handle it.
+            // Simplified:
+            get().fetchPosts();
+        } catch (error) {
+            console.error(error);
+        }
+    },
 
-                if (prevVote === optionId) return p; // Same vote, do nothing (or could toggle off)
+    votePoll: (postId, optionId) => {
+        // Optimistic update
+        set((state) => {
+            const newPosts = state.posts.map(p => {
+                if (p.id === postId && p.poll) {
+                    const prevVote = p.poll.userVote;
+                    let options = p.poll.options.map(opt => ({ ...opt }));
 
-                if (prevVote) {
-                    options = options.map(opt =>
-                        opt.id === prevVote ? { ...opt, votes: opt.votes - 1 } : opt
-                    );
-                }
+                    if (prevVote === optionId) return p;
 
-                options = options.map(opt =>
-                    opt.id === optionId ? { ...opt, votes: opt.votes + 1 } : opt
-                );
-
-                return {
-                    ...p,
-                    poll: {
-                        ...p.poll,
-                        options,
-                        userVote: optionId,
-                        totalVotes: prevVote ? p.poll.totalVotes : p.poll.totalVotes + 1
+                    if (prevVote) {
+                        options = options.map(opt =>
+                            opt.id === prevVote ? { ...opt, votes: opt.votes - 1 } : opt
+                        );
                     }
-                };
-            }
-            return p;
+
+                    options = options.map(opt =>
+                        opt.id === optionId ? { ...opt, votes: opt.votes + 1 } : opt
+                    );
+
+                    return {
+                        ...p,
+                        poll: {
+                            ...p.poll,
+                            options,
+                            userVote: optionId,
+                            totalVotes: prevVote ? p.poll.totalVotes : p.poll.totalVotes + 1
+                        }
+                    };
+                }
+                return p;
+            });
+            return { posts: newPosts };
         });
-        localDB.save({ posts: newPosts });
-        return { posts: newPosts };
-    }),
+    },
 
     addComment: (postId, comment) => set((state) => {
         const newPosts = state.posts.map(p => {
@@ -102,7 +134,6 @@ export const usePostStore = create<PostState>((set, get) => ({
             }
             return p;
         });
-        localDB.save({ posts: newPosts });
         return { posts: newPosts };
     }),
 
@@ -122,7 +153,6 @@ export const usePostStore = create<PostState>((set, get) => ({
             }
             return p;
         });
-        localDB.save({ posts: newPosts });
         return { posts: newPosts };
     }),
 
@@ -138,7 +168,6 @@ export const usePostStore = create<PostState>((set, get) => ({
             }
             return p;
         });
-        localDB.save({ posts: newPosts });
         return { posts: newPosts };
     }),
 
@@ -149,29 +178,23 @@ export const usePostStore = create<PostState>((set, get) => ({
             }
             return p;
         });
-        localDB.save({ posts: newPosts });
         return { posts: newPosts };
     }),
 
     reportContent: (targetId, type, reason) => {
-        // In a real app, this would send to API.
-        // For local demo, we just log it or could store in a separate 'reports' collection if we wanted.
         console.log(`Reported ${type} ${targetId}: ${reason}`);
         alert("Contenu signalé aux administrateurs. Merci de votre vigilance.");
     },
 
     deletePost: (postId) => set((state) => {
         const newPosts = state.posts.filter(p => p.id !== postId);
-        localDB.save({ posts: newPosts });
         return { posts: newPosts };
     }),
 
     deleteComment: (postId, commentId) => set((state) => {
         const newPosts = state.posts.map(p => {
             if (p.id === postId && p.comments) {
-                // Filter out the comment or check if it's a reply
                 const filteredComments = p.comments.filter(c => c.id !== commentId).map(c => {
-                    // Also check replies and remove if matches
                     if (c.replies) {
                         return {
                             ...c,
@@ -180,21 +203,11 @@ export const usePostStore = create<PostState>((set, get) => ({
                     }
                     return c;
                 });
-
-                // Calculate new comment count
-                const removedFromMain = p.comments.some(c => c.id === commentId);
-                const removedFromReplies = p.comments.some(c => c.replies?.some(r => r.id === commentId));
-                const countChange = (removedFromMain || removedFromReplies) ? -1 : 0;
-
-                return {
-                    ...p,
-                    comments: filteredComments,
-                    commentsCount: Math.max(0, p.commentsCount + countChange)
-                };
+                return { ...p, comments: filteredComments };
             }
             return p;
         });
-        localDB.save({ posts: newPosts });
         return { posts: newPosts };
     })
 }));
+
