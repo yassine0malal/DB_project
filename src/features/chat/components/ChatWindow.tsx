@@ -38,9 +38,9 @@ export const ChatWindow = ({ conversation, messages, onSendMessage }: ChatWindow
     };
 
     return (
-        <div className="flex flex-col h-full bg-slate-50">
+        <div className="flex flex-col h-full bg-slate-50 dark:bg-gray-900/50">
             {/* Header */}
-            <div className="bg-white p-4 border-b flex items-center justify-between shadow-sm z-10">
+            <div className="bg-white dark:bg-gray-900 p-4 border-b dark:border-gray-800 flex items-center justify-between shadow-sm z-10 text-gray-900 dark:text-gray-100">
                 <div className="flex items-center gap-3">
                     <div className="h-10 w-10 rounded-full bg-blue-100 overflow-hidden">
                         {otherParticipant?.avatarUrl ? (
@@ -52,7 +52,7 @@ export const ChatWindow = ({ conversation, messages, onSendMessage }: ChatWindow
                         )}
                     </div>
                     <div>
-                        <h3 className="font-bold text-gray-900">
+                        <h3 className="font-bold text-gray-900 dark:text-gray-100">
                             {otherParticipant?.firstName} {otherParticipant?.lastName}
                         </h3>
                         <p className="text-xs text-green-500 font-medium">En ligne</p>
@@ -69,10 +69,10 @@ export const ChatWindow = ({ conversation, messages, onSendMessage }: ChatWindow
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 {messages.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center text-center p-8">
-                        <div className="h-20 w-20 bg-blue-50 rounded-full flex items-center justify-center mb-4">
-                            <Send className="h-10 w-10 text-blue-200" />
+                        <div className="h-20 w-20 bg-blue-50 dark:bg-blue-900/10 rounded-full flex items-center justify-center mb-4">
+                            <Send className="h-10 w-10 text-blue-200 dark:text-blue-800" />
                         </div>
-                        <h4 className="font-bold text-gray-900">Démarrer une conversation</h4>
+                        <h4 className="font-bold text-gray-900 dark:text-gray-100">Démarrer une conversation</h4>
                         <p className="text-sm text-gray-500 max-w-[200px]">
                             Envoyez un message pour commencer à discuter avec {otherParticipant?.firstName}.
                         </p>
@@ -89,7 +89,7 @@ export const ChatWindow = ({ conversation, messages, onSendMessage }: ChatWindow
                                     "max-w-[70%] px-4 py-2 rounded-2xl text-sm shadow-sm",
                                     isMine
                                         ? "bg-blue-600 text-white rounded-tr-none"
-                                        : "bg-white text-gray-800 rounded-tl-none border border-gray-100"
+                                        : "bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-tl-none border border-gray-100 dark:border-gray-700"
                                 )}>
                                     {msg.content}
                                 </div>
@@ -106,9 +106,9 @@ export const ChatWindow = ({ conversation, messages, onSendMessage }: ChatWindow
             </div>
 
             {/* Input */}
-            <div className="bg-white p-4 border-t">
+            <div className="bg-white dark:bg-gray-900 p-4 border-t dark:border-gray-800">
                 <form onSubmit={handleSend} className="flex gap-2">
-                    <Button type="button" variant="ghost" size="icon" className="text-gray-400 shrink-0">
+                    <Button type="button" variant="ghost" size="icon" className="text-gray-400 dark:text-gray-500 shrink-0">
                         <Paperclip className="h-5 w-5" />
                     </Button>
                     <Button type="button" variant="ghost" size="icon" className="text-gray-400 shrink-0">
@@ -118,7 +118,7 @@ export const ChatWindow = ({ conversation, messages, onSendMessage }: ChatWindow
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
                         placeholder="Écrivez votre message..."
-                        className="flex-1 bg-gray-50 border-gray-200 focus:ring-blue-100"
+                        className="flex-1 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:ring-blue-100 dark:focus:ring-blue-900 dark:text-gray-100 dark:placeholder:text-gray-500"
                     />
                     <Button
                         type="submit"

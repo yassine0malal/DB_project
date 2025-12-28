@@ -30,7 +30,7 @@ export const EventDetailsPage = () => {
     return (
         <div className="max-w-5xl mx-auto pb-20 space-y-6">
             <Link to="/events">
-                <Button variant="ghost" size="sm" className="mb-2 gap-2 text-gray-500 hover:text-gray-900">
+                <Button variant="ghost" size="sm" className="mb-2 gap-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200">
                     <ArrowLeft className="h-4 w-4" />
                     Retour aux événements
                 </Button>
@@ -86,9 +86,9 @@ export const EventDetailsPage = () => {
                 {/* Main Content */}
                 <div className="lg:col-span-2 space-y-8">
                     {/* About */}
-                    <section className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-                        <h2 className="text-2xl font-bold mb-4">À propos de l'événement</h2>
-                        <div className="prose max-w-none text-gray-600 leading-relaxed">
+                    <section className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                        <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">À propos de l'événement</h2>
+                        <div className="prose max-w-none text-gray-600 dark:text-gray-300 leading-relaxed">
                             {event.fullDescription ? event.fullDescription : event.description}
                         </div>
                     </section>
@@ -96,16 +96,16 @@ export const EventDetailsPage = () => {
                     {/* Guests */}
                     {event.guests && event.guests.length > 0 && (
                         <section>
-                            <h2 className="text-2xl font-bold mb-6">Invités & Intervenants</h2>
+                            <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100">Invités & Intervenants</h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {event.guests.map(guest => (
-                                    <div key={guest.id} className="bg-white p-4 rounded-xl border border-gray-100 flex items-center gap-4 hover:shadow-md transition-shadow">
-                                        <div className="h-16 w-16 rounded-full bg-gray-200 overflow-hidden shrink-0">
+                                    <div key={guest.id} className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700 flex items-center gap-4 hover:shadow-md transition-shadow">
+                                        <div className="h-16 w-16 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden shrink-0">
                                             {guest.avatarUrl && <img src={guest.avatarUrl} alt={guest.name} className="w-full h-full object-cover" />}
                                         </div>
                                         <div>
-                                            <h4 className="font-bold text-lg">{guest.name}</h4>
-                                            <p className="text-blue-600 font-medium text-sm">{guest.role}</p>
+                                            <h4 className="font-bold text-lg text-gray-900 dark:text-gray-100">{guest.name}</h4>
+                                            <p className="text-blue-600 dark:text-blue-400 font-medium text-sm">{guest.role}</p>
                                             {guest.company && (
                                                 <div className="flex items-center gap-1 text-gray-500 text-xs mt-1">
                                                     <Building2 className="h-3 w-3" />
@@ -126,7 +126,7 @@ export const EventDetailsPage = () => {
 
                     {/* Gallery (Mock) */}
                     <section>
-                        <h2 className="text-2xl font-bold mb-6">Galerie</h2>
+                        <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100">Galerie</h2>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                             {[1, 2, 3].map(i => (
                                 <div key={i} className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
@@ -140,18 +140,18 @@ export const EventDetailsPage = () => {
                 {/* Sidebar */}
                 <div className="space-y-6">
                     {/* Organizer Card */}
-                    <Card className="overflow-hidden">
-                        <div className="bg-gray-100 h-20 relative">
+                    <Card className="overflow-hidden dark:bg-gray-800 dark:border-gray-700">
+                        <div className="bg-gray-100 dark:bg-gray-900 h-20 relative">
                             {event.club.coverUrl && <img src={event.club.coverUrl} className="w-full h-full object-cover opacity-50" />}
-                            <div className="absolute -bottom-6 left-6 h-16 w-16 rounded-lg border-4 border-white bg-white overflow-hidden shadow-sm">
+                            <div className="absolute -bottom-6 left-6 h-16 w-16 rounded-lg border-4 border-white dark:border-gray-800 bg-white dark:bg-gray-800 overflow-hidden shadow-sm">
                                 {event.club.logoUrl && <img src={event.club.logoUrl} className="w-full h-full object-cover" />}
                             </div>
                         </div>
                         <CardContent className="pt-8 pb-6 px-6">
-                            <h3 className="font-bold text-lg mb-1">{event.club.name}</h3>
-                            <p className="text-sm text-gray-500 mb-4 line-clamp-2">{event.club.description}</p>
+                            <h3 className="font-bold text-lg mb-1 text-gray-900 dark:text-gray-100">{event.club.name}</h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 line-clamp-2">{event.club.description}</p>
                             <Link to={`/clubs/${event.club.id}`}>
-                                <Button variant="outline" size="sm" className="w-full">
+                                <Button variant="outline" size="sm" className="w-full dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700">
                                     Voir le club
                                 </Button>
                             </Link>
@@ -159,11 +159,11 @@ export const EventDetailsPage = () => {
                     </Card>
 
                     {/* Actions */}
-                    <Card className="p-6 sticky top-24">
+                    <Card className="p-6 sticky top-24 dark:bg-gray-800 dark:border-gray-700">
                         <div className="space-y-4">
                             <div>
-                                <h3 className="font-bold text-gray-900 mb-2">Inscription</h3>
-                                <p className="text-sm text-gray-500 mb-4">
+                                <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-2">Inscription</h3>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                                     {event.isPaid ? "Cet événement est payant." : "Cet événement est gratuit et ouvert à tous."}
                                 </p>
                                 <Button
@@ -180,9 +180,9 @@ export const EventDetailsPage = () => {
                                 </Button>
                             </div>
 
-                            <hr className="border-gray-100" />
+                            <hr className="border-gray-100 dark:border-gray-700" />
 
-                            <div className="flex items-center justify-between text-sm text-gray-600">
+                            <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
                                 <span className="flex items-center gap-2">
                                     <Users className="h-4 w-4" />
                                     {event.attendees.length} participants
@@ -199,7 +199,7 @@ export const EventDetailsPage = () => {
                         </div>
                     </Card>
                 </div>
-            </div>
+            </div >
 
             <ShareModal
                 isOpen={showShareModal}
@@ -207,6 +207,6 @@ export const EventDetailsPage = () => {
                 title={event.title}
                 url={`${window.location.origin}/events/${event.id}`}
             />
-        </div>
+        </div >
     );
 };

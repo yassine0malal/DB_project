@@ -4,7 +4,7 @@ import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import { usePostStore } from '../store/usePostStore';
 import { useAuthStore } from '../../auth/store/useAuthStore';
-import { Post, PollOption } from '../types';
+import { PollOption } from '../types';
 import { Image, BarChart2, X, Plus } from 'lucide-react';
 import { cn } from '../../../utils/cn';
 
@@ -50,16 +50,6 @@ export const CreatePostModal = ({ isOpen, onClose }: CreatePostModalProps) => {
     const handleSubmit = () => {
         if (!user) return;
 
-        const basePost = {
-            id: Date.now().toString(),
-            createdAt: new Date().toISOString(),
-            author: user,
-            likesCount: 0,
-            commentsCount: 0,
-            sharesCount: 0,
-            comments: []
-        };
-
         if (activeTab === 'poll') {
             if (!pollQuestion.trim() || pollOptions.some(o => !o.trim())) return;
 
@@ -69,26 +59,28 @@ export const CreatePostModal = ({ isOpen, onClose }: CreatePostModalProps) => {
                 votes: 0
             }));
 
-            const newPost: Post = {
-                ...basePost,
+            addPost({
                 type: 'poll',
                 content: pollQuestion,
                 poll: {
+                    id: `poll-${Date.now()}`,
                     question: pollQuestion,
                     options,
                     totalVotes: 0
-                }
-            };
-            addPost(newPost);
+                },
+                author: user,
+                authorId: user.id
+            });
         } else {
             if (!content.trim()) return;
-            const newPost: Post = {
-                ...basePost,
+
+            addPost({
                 type: imageUrl ? 'image' : 'text',
                 content,
-                imageUrl: imageUrl || undefined
-            };
-            addPost(newPost);
+                imageUrl: imageUrl || undefined,
+                author: user,
+                authorId: user.id
+            });
         }
 
         // Reset and Close
@@ -111,11 +103,11 @@ export const CreatePostModal = ({ isOpen, onClose }: CreatePostModalProps) => {
                 </DialogHeader>
 
                 <div className="p-6">
-                    <div className="flex gap-2 mb-4 border-b border-gray-100 pb-2">
+                    <div className="flex gap-2 mb-4 border-b border-gray-100 dark:border-gray-700 pb-2">
                         <Button
                             variant="ghost"
                             onClick={() => setActiveTab('post')}
-                            className={cn("flex-1 gap-2 rounded-lg", activeTab === 'post' ? "bg-blue-50 text-blue-600 font-bold" : "text-gray-500")}
+                            className={cn("flex-1 gap-2 rounded-lg", activeTab === 'post' ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold" : "text-gray-500 dark:text-gray-400")}
                         >
                             <Image className="h-4 w-4" />
                             Publication
@@ -123,7 +115,7 @@ export const CreatePostModal = ({ isOpen, onClose }: CreatePostModalProps) => {
                         <Button
                             variant="ghost"
                             onClick={() => setActiveTab('poll')}
-                            className={cn("flex-1 gap-2 rounded-lg", activeTab === 'poll' ? "bg-blue-50 text-blue-600 font-bold" : "text-gray-500")}
+                            className={cn("flex-1 gap-2 rounded-lg", activeTab === 'poll' ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold" : "text-gray-500 dark:text-gray-400")}
                         >
                             <BarChart2 className="h-4 w-4" />
                             Sondage
@@ -132,7 +124,7 @@ export const CreatePostModal = ({ isOpen, onClose }: CreatePostModalProps) => {
 
                     <div className="space-y-4">
                         <div className="flex gap-3">
-                            <div className="h-10 w-10 rounded-full bg-blue-100 flex-shrink-0 overflow-hidden border border-gray-100">
+                            <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex-shrink-0 overflow-hidden border border-gray-100 dark:border-gray-700">
                                 {user?.avatarUrl ? <img src={user.avatarUrl} className="h-full w-full object-cover" /> : null}
                             </div>
 
@@ -142,7 +134,7 @@ export const CreatePostModal = ({ isOpen, onClose }: CreatePostModalProps) => {
                                         <textarea
                                             value={content}
                                             onChange={(e) => setContent(e.target.value)}
-                                            className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-300 transition-all resize-none font-medium"
+                                            className="w-full bg-gray-50 dark:bg-gray-700 dark:text-gray-100 border border-gray-200 dark:border-gray-600 rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/40 focus:border-blue-300 dark:focus:border-blue-600 transition-all resize-none font-medium"
                                             placeholder={`Quoi de neuf, ${user?.firstName} ?`}
                                             rows={4}
                                         />
@@ -151,10 +143,10 @@ export const CreatePostModal = ({ isOpen, onClose }: CreatePostModalProps) => {
                                                 value={imageUrl}
                                                 onChange={(e) => setImageUrl(e.target.value)}
                                                 placeholder="URL de l'image (optionnel)..."
-                                                className="text-xs bg-gray-50"
+                                                className="text-xs bg-gray-50 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
                                             />
                                             {imageUrl && (
-                                                <div className="h-32 w-full bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+                                                <div className="h-32 w-full bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
                                                     <img src={imageUrl} className="h-full w-full object-cover" onError={(e) => e.currentTarget.style.display = 'none'} />
                                                 </div>
                                             )}
@@ -165,7 +157,7 @@ export const CreatePostModal = ({ isOpen, onClose }: CreatePostModalProps) => {
                                         <textarea
                                             value={pollQuestion}
                                             onChange={(e) => setPollQuestion(e.target.value)}
-                                            className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-300 transition-all resize-none font-bold text-lg placeholder:font-normal"
+                                            className="w-full bg-gray-50 dark:bg-gray-700 dark:text-gray-100 border border-gray-200 dark:border-gray-600 rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/40 focus:border-blue-300 dark:focus:border-blue-600 transition-all resize-none font-bold text-lg placeholder:font-normal"
                                             placeholder="Posez votre question..."
                                             rows={2}
                                         />
@@ -176,10 +168,10 @@ export const CreatePostModal = ({ isOpen, onClose }: CreatePostModalProps) => {
                                                         value={opt}
                                                         onChange={(e) => handleOptionChange(idx, e.target.value)}
                                                         placeholder={`Option ${idx + 1}`}
-                                                        className="bg-gray-50 text-sm"
+                                                        className="bg-gray-50 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600 text-sm"
                                                     />
                                                     {pollOptions.length > 2 && (
-                                                        <button onClick={() => handleRemoveOption(idx)} className="text-gray-400 hover:text-red-500">
+                                                        <button onClick={() => handleRemoveOption(idx)} className="text-gray-400 dark:text-gray-500 hover:text-red-500">
                                                             <X className="h-4 w-4" />
                                                         </button>
                                                     )}

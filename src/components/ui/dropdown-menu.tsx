@@ -29,7 +29,7 @@ export const DropdownMenu = ({ trigger, children, align = 'right' }: DropdownMen
             {isOpen && (
                 <div
                     className={cn(
-                        "absolute z-10 mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none animate-in fade-in zoom-in-95 duration-100",
+                        "absolute z-10 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black dark:ring-gray-700 ring-opacity-5 dark:ring-opacity-100 focus:outline-none animate-in fade-in zoom-in-95 duration-100",
                         align === 'right' ? 'right-0' : 'left-0'
                     )}
                 >
@@ -46,8 +46,8 @@ export const DropdownItem = ({ children, onClick, className, destructive }: { ch
     return (
         <div
             className={cn(
-                "block px-4 py-2 text-sm cursor-pointer hover:bg-gray-50 transition-colors",
-                destructive ? "text-red-600 hover:bg-red-50" : "text-gray-700",
+                "block px-4 py-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors",
+                destructive ? "text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20" : "text-gray-700 dark:text-gray-200",
                 className
             )}
             onClick={(e) => {

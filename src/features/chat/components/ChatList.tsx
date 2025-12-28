@@ -14,13 +14,13 @@ export const ChatList = ({ conversations, activeConversationId, onConversationSe
     const { user: currentUser } = useAuthStore();
 
     return (
-        <div className="flex flex-col h-full bg-white border-r">
-            <div className="p-4 border-b">
-                <h2 className="text-xl font-bold text-gray-900">Messages</h2>
+        <div className="flex flex-col h-full bg-white dark:bg-gray-900 border-r dark:border-gray-800">
+            <div className="p-4 border-b dark:border-gray-800">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Messages</h2>
             </div>
             <div className="flex-1 overflow-y-auto">
                 {conversations.length === 0 ? (
-                    <div className="p-8 text-center text-gray-500 text-sm">
+                    <div className="p-8 text-center text-gray-500 dark:text-gray-400 text-sm">
                         Aucune conversation
                     </div>
                 ) : (
@@ -33,8 +33,8 @@ export const ChatList = ({ conversations, activeConversationId, onConversationSe
                                 key={conv.id}
                                 onClick={() => onConversationSelect(conv.id)}
                                 className={cn(
-                                    "w-full flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors border-b border-gray-50 text-left",
-                                    isActive && "bg-blue-50/50"
+                                    "w-full flex items-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-b border-gray-50 dark:border-gray-800 text-left",
+                                    isActive && "bg-blue-50/50 dark:bg-blue-900/10"
                                 )}
                             >
                                 <div className="relative">
@@ -55,7 +55,7 @@ export const ChatList = ({ conversations, activeConversationId, onConversationSe
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex justify-between items-baseline mb-1">
-                                        <h4 className="font-semibold text-gray-900 truncate">
+                                        <h4 className="font-semibold text-gray-900 dark:text-gray-100 truncate">
                                             {otherParticipant?.firstName} {otherParticipant?.lastName}
                                         </h4>
                                         <span className="text-[10px] text-gray-400 capitalize">
@@ -64,7 +64,7 @@ export const ChatList = ({ conversations, activeConversationId, onConversationSe
                                     </div>
                                     <p className={cn(
                                         "text-sm truncate",
-                                        conv.unreadCount > 0 ? "text-gray-900 font-bold" : "text-gray-500"
+                                        conv.unreadCount > 0 ? "text-gray-900 dark:text-gray-100 font-bold" : "text-gray-500 dark:text-gray-400"
                                     )}>
                                         {conv.lastMessage?.content || "Dites bonjour !"}
                                     </p>

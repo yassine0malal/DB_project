@@ -16,8 +16,8 @@ export const FeedPage = () => {
 
     // Initial Fetch
     useEffect(() => {
-        fetchPosts();
-    }, [fetchPosts]);
+        fetchPosts(user?.id);
+    }, [fetchPosts, user?.id]);
 
     if (isLoading) {
         return <div className="text-center py-10">Chargement des publications...</div>;

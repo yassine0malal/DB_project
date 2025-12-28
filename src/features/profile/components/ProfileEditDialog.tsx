@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { User } from '../../auth/types';
-import { useAuthStore } from '../../auth/store/useAuthStore';
+import { useProfileStore } from '../store/useProfileStore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../../components/ui/dialog';
+import { Edit } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
@@ -15,7 +16,7 @@ interface ProfileEditDialogProps {
 }
 
 export const ProfileEditDialog = ({ user, open, onOpenChange }: ProfileEditDialogProps) => {
-    const { updateUser } = useAuthStore();
+    const { updateProfile, updateDetails } = useProfileStore();
     const [isLoading, setIsLoading] = useState(false);
 
     const { register, handleSubmit } = useForm({
@@ -51,40 +52,40 @@ export const ProfileEditDialog = ({ user, open, onOpenChange }: ProfileEditDialo
     const onSubmit = async (data: any) => {
         setIsLoading(true);
         try {
-            // Construct the update object
-            const updates: Partial<User> = {
+            // 1. Update basic info
+            await updateProfile(user.id, {
                 firstName: data.firstName,
                 lastName: data.lastName,
                 bio: data.bio,
                 avatarUrl: data.avatarUrl,
-                socialLinks: {
-                    linkedin: data.linkedin,
-                    github: data.github,
-                    website: data.website
-                }
-            };
+            });
 
-            // Role specific updates
+            // 2. Update details & socials
+            const details: any = {};
             if (user.role === 'student') {
-                Object.assign(updates, {
-                    major: data.major,
-                    level: data.level,
-                });
+                details.major = data.major;
+                details.level = data.level;
+                // Preserve existing arrays if not in form
+                details.skills = user.skills || [];
+                details.interests = user.interests || [];
+                details.academicYear = user.academicYear || '2024-2025';
             } else if (user.role === 'teacher') {
-                Object.assign(updates, {
-                    officeLocation: data.officeLocation,
-                    officeHours: data.officeHours,
-                    currentResearch: data.currentResearch,
-                });
+                details.department = user.department; // Not in form?
+                details.officeLocation = data.officeLocation;
+                details.officeHours = data.officeHours;
             } else if (user.role === 'admin') {
-                Object.assign(updates, {
-                    adminRole: data.adminRole,
-                    availabilityHours: data.availabilityHours,
-                    emergencyContact: data.emergencyContact,
-                });
+                details.department = user.department;
+                details.adminRole = data.adminRole;
             }
 
-            updateUser(updates);
+            const social = {
+                linkedin: data.linkedin,
+                github: data.github,
+                website: data.website
+            };
+
+            await updateDetails(user.id, user.role, details, social);
+
             onOpenChange(false);
         } catch (error) {
             console.error('Failed to update profile', error);
@@ -95,110 +96,132 @@ export const ProfileEditDialog = ({ user, open, onOpenChange }: ProfileEditDialo
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0 border-none bg-white dark:bg-gray-800 shadow-2xl">
                 <DialogHeader>
-                    <DialogTitle>Modifier le profil</DialogTitle>
+                    <DialogTitle>
+                        <div className="p-2 bg-blue-600 rounded-xl shadow-lg shadow-blue-500/20 text-white">
+                            <Edit className="h-5 w-5" />
+                        </div>
+                        Modifier mon profil
+                    </DialogTitle>
                 </DialogHeader>
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                <form onSubmit={handleSubmit(onSubmit)} className="p-8 pt-6 space-y-10">
 
                     {/* Common Info */}
-                    <div className="space-y-4">
-                        <h3 className="font-semibold border-b pb-2">Informations Générales</h3>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="firstName">Prénom</Label>
-                                <Input id="firstName" {...register('firstName')} />
+                    <div className="space-y-6">
+                        <div className="flex items-center gap-3">
+                            <h3 className="text-xs font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.2em]">Informations Générales</h3>
+                            <div className="h-px flex-1 bg-gray-100 dark:bg-gray-700/50" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-2.5">
+                                <Label htmlFor="firstName" className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 ml-1">Prénom</Label>
+                                <Input id="firstName" {...register('firstName')} className="rounded-xl border-gray-100 dark:border-gray-700 dark:bg-gray-900/50 focus:ring-blue-500 transition-all font-medium py-6" />
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="lastName">Nom</Label>
-                                <Input id="lastName" {...register('lastName')} />
+                            <div className="space-y-2.5">
+                                <Label htmlFor="lastName" className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 ml-1">Nom</Label>
+                                <Input id="lastName" {...register('lastName')} className="rounded-xl border-gray-100 dark:border-gray-700 dark:bg-gray-900/50 focus:ring-blue-500 transition-all font-medium py-6" />
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="bio">Bio</Label>
-                            <Textarea id="bio" {...register('bio')} placeholder="Parlez-nous de vous..." />
+                        <div className="space-y-2.5">
+                            <Label htmlFor="bio" className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 ml-1">Bio</Label>
+                            <Textarea id="bio" {...register('bio')} placeholder="Parlez-nous de vous..." className="rounded-xl border-gray-100 dark:border-gray-700 dark:bg-gray-900/50 focus:ring-blue-500 transition-all font-medium min-h-[120px] p-4 text-sm" />
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="avatarUrl">URL Photo de profil</Label>
-                            <Input id="avatarUrl" {...register('avatarUrl')} placeholder="https://..." />
+                        <div className="space-y-2.5">
+                            <Label htmlFor="avatarUrl" className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 ml-1">URL Photo de profil</Label>
+                            <Input id="avatarUrl" {...register('avatarUrl')} placeholder="https://..." className="rounded-xl border-gray-100 dark:border-gray-700 dark:bg-gray-900/50 focus:ring-blue-500 transition-all font-medium py-6" />
                         </div>
                     </div>
 
                     {/* Role Specific */}
                     {user.role === 'student' && (
-                        <div className="space-y-4">
-                            <h3 className="font-semibold border-b pb-2">Étudiant</h3>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="major">Filière</Label>
-                                    <Input id="major" {...register('major')} />
+                        <div className="space-y-6 animate-in slide-in-from-top-2 duration-500">
+                            <div className="flex items-center gap-3">
+                                <h3 className="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-[0.2em]">Détails Étudiant</h3>
+                                <div className="h-px flex-1 bg-gray-100 dark:bg-gray-700/50" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-6">
+                                <div className="space-y-2.5">
+                                    <Label htmlFor="major" className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 ml-1">Filière</Label>
+                                    <Input id="major" {...register('major')} className="rounded-xl border-gray-100 dark:border-gray-700 dark:bg-gray-900/50 py-6" />
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="level">Niveau</Label>
-                                    <Input id="level" {...register('level')} />
+                                <div className="space-y-2.5">
+                                    <Label htmlFor="level" className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 ml-1">Niveau</Label>
+                                    <Input id="level" {...register('level')} className="rounded-xl border-gray-100 dark:border-gray-700 dark:bg-gray-900/50 py-6" />
                                 </div>
                             </div>
                         </div>
                     )}
 
                     {user.role === 'teacher' && (
-                        <div className="space-y-4">
-                            <h3 className="font-semibold border-b pb-2">Enseignant</h3>
-                            <div className="space-y-2">
-                                <Label htmlFor="officeLocation">Bureau</Label>
-                                <Input id="officeLocation" {...register('officeLocation')} />
+                        <div className="space-y-6 animate-in slide-in-from-top-2 duration-500">
+                            <div className="flex items-center gap-3">
+                                <h3 className="text-xs font-black text-green-600 dark:text-green-400 uppercase tracking-[0.2em]">Détails Enseignant</h3>
+                                <div className="h-px flex-1 bg-gray-100 dark:bg-gray-700/50" />
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="officeHours">Heures de permanence</Label>
-                                <Input id="officeHours" {...register('officeHours')} />
+                            <div className="grid grid-cols-2 gap-6">
+                                <div className="space-y-2.5">
+                                    <Label htmlFor="officeLocation" className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 ml-1">Bureau</Label>
+                                    <Input id="officeLocation" {...register('officeLocation')} className="rounded-xl border-gray-100 dark:border-gray-700 dark:bg-gray-900/50 py-6" />
+                                </div>
+                                <div className="space-y-2.5">
+                                    <Label htmlFor="officeHours" className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 ml-1">Permanence</Label>
+                                    <Input id="officeHours" {...register('officeHours')} className="rounded-xl border-gray-100 dark:border-gray-700 dark:bg-gray-900/50 py-6" />
+                                </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="currentResearch">Recherches en cours</Label>
-                                <Textarea id="currentResearch" {...register('currentResearch')} />
+                            <div className="space-y-2.5">
+                                <Label htmlFor="currentResearch" className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 ml-1">Recherches en cours</Label>
+                                <Textarea id="currentResearch" {...register('currentResearch')} className="rounded-xl border-gray-100 dark:border-gray-700 dark:bg-gray-900/50 min-h-[100px]" />
                             </div>
                         </div>
                     )}
 
                     {user.role === 'admin' && (
-                        <div className="space-y-4">
-                            <h3 className="font-semibold border-b pb-2">Admin</h3>
-                            <div className="space-y-2">
-                                <Label htmlFor="adminRole">Rôle Administratif</Label>
-                                <Input id="adminRole" {...register('adminRole')} />
+                        <div className="space-y-6 animate-in slide-in-from-top-2 duration-500">
+                            <div className="flex items-center gap-3">
+                                <h3 className="text-xs font-black text-rose-600 dark:text-rose-400 uppercase tracking-[0.2em]">Détails Admin</h3>
+                                <div className="h-px flex-1 bg-gray-100 dark:bg-gray-700/50" />
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="availabilityHours">Disponibilité</Label>
-                                <Input id="availabilityHours" {...register('availabilityHours')} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="emergencyContact">Contact d'urgence</Label>
-                                <Input id="emergencyContact" {...register('emergencyContact')} />
+                            <div className="grid grid-cols-2 gap-6">
+                                <div className="space-y-2.5">
+                                    <Label htmlFor="adminRole" className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 ml-1">Rôle Administratif</Label>
+                                    <Input id="adminRole" {...register('adminRole')} className="rounded-xl border-gray-100 dark:border-gray-700 dark:bg-gray-900/50 py-6" />
+                                </div>
+                                <div className="space-y-2.5">
+                                    <Label htmlFor="availabilityHours" className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 ml-1">Disponibilité</Label>
+                                    <Input id="availabilityHours" {...register('availabilityHours')} className="rounded-xl border-gray-100 dark:border-gray-700 dark:bg-gray-900/50 py-6" />
+                                </div>
                             </div>
                         </div>
                     )}
 
                     {/* Social Links */}
-                    <div className="space-y-4">
-                        <h3 className="font-semibold border-b pb-2">Réseaux Sociaux</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="linkedin">LinkedIn</Label>
-                                <Input id="linkedin" {...register('linkedin')} placeholder="URL LinkedIn" />
+                    <div className="space-y-6">
+                        <div className="flex items-center gap-3">
+                            <h3 className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em]">Réseaux Sociaux</h3>
+                            <div className="h-px flex-1 bg-gray-100 dark:bg-gray-700/50" />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="space-y-2.5">
+                                <Label htmlFor="linkedin" className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 ml-1">LinkedIn</Label>
+                                <Input id="linkedin" {...register('linkedin')} placeholder="URL LinkedIn" className="rounded-xl border-gray-100 dark:border-gray-700 dark:bg-gray-900/50 py-6" />
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="github">GitHub</Label>
-                                <Input id="github" {...register('github')} placeholder="URL GitHub" />
+                            <div className="space-y-2.5">
+                                <Label htmlFor="github" className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 ml-1">GitHub</Label>
+                                <Input id="github" {...register('github')} placeholder="URL GitHub" className="rounded-xl border-gray-100 dark:border-gray-700 dark:bg-gray-900/50 py-6" />
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="website">Site Web</Label>
-                                <Input id="website" {...register('website')} placeholder="URL Site Web" />
+                            <div className="space-y-2.5">
+                                <Label htmlFor="website" className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 ml-1">Site Web</Label>
+                                <Input id="website" {...register('website')} placeholder="URL Site Web" className="rounded-xl border-gray-100 dark:border-gray-700 dark:bg-gray-900/50 py-6" />
                             </div>
                         </div>
                     </div>
 
                     <DialogFooter>
-                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
-                        <Button type="submit" disabled={isLoading}>Enregistrer</Button>
+                        <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="rounded-xl font-bold uppercase tracking-widest text-[10px]">Annuler</Button>
+                        <Button type="submit" disabled={isLoading} className="bg-blue-600 hover:bg-blue-700 rounded-xl px-10 shadow-lg shadow-blue-500/20 font-bold uppercase tracking-widest text-[10px] transition-all active:scale-95 disabled:opacity-50">
+                            {isLoading ? 'Enregistrement...' : 'Enregistrer les modifications'}
+                        </Button>
                     </DialogFooter>
                 </form>
             </DialogContent>

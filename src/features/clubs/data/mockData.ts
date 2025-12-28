@@ -134,6 +134,7 @@ Stages de fin d'études chez des startups technologiques et bons d'achat.
                 content: "Quel sport souhaiteriez-vous voir ajouté au prochain tournoi inter-filières ? ⚽🎾🏐",
                 author: MOCK_USERS[5],
                 poll: {
+                    id: 'poll-sp2',
                     question: "Sport préféré ?",
                     options: [
                         { id: '1', label: 'E-Sports', votes: 124 },

@@ -12,15 +12,15 @@ interface GroupCardProps {
 const getGroupTypeInfo = (type: GroupType) => {
     switch (type) {
         case 'friends':
-            return { label: 'Amis', icon: Heart, color: 'bg-pink-100 text-pink-700' };
-        case 'apartment':
-            return { label: 'Colocation', icon: Home, color: 'bg-amber-100 text-amber-700' };
+            return { label: 'Amis', icon: Heart, color: 'bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-400' };
+        case 'apartment':   
+            return { label: 'Colocation', icon: Home, color: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' };
         case 'class':
-            return { label: 'Promotion', icon: GraduationCap, color: 'bg-blue-100 text-blue-700' };
+            return { label: 'Promotion', icon: GraduationCap, color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' };
         case 'club':
-            return { label: 'Club', icon: Trophy, color: 'bg-purple-100 text-purple-700' };
+            return { label: 'Club', icon: Trophy, color: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400' };
         default:
-            return { label: 'Groupe', icon: Users, color: 'bg-gray-100 text-gray-700' };
+            return { label: 'Groupe', icon: Users, color: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300' };
     }
 };
 
@@ -46,10 +46,10 @@ export const GroupCard = ({ group }: GroupCardProps) => {
     };
 
     return (
-        <Link to={`/groups/${group.id}`}>
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all hover:-translate-y-1 group">
+        <Link to={`/groups/${group.id}`} className="block h-full">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden hover:shadow-md transition-all hover:-translate-y-1 group h-full flex flex-col">
                 {/* Cover Image */}
-                <div className="h-32 relative overflow-hidden">
+                <div className="h-32 relative overflow-hidden shrink-0">
                     <img
                         src={group.coverUrl || 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=600&h=200'}
                         alt={group.name}
@@ -80,13 +80,13 @@ export const GroupCard = ({ group }: GroupCardProps) => {
                 </div>
 
                 {/* Content */}
-                <div className="p-4">
-                    <h3 className="font-semibold text-gray-900 truncate">{group.name}</h3>
-                    <p className="text-sm text-gray-500 mt-1 line-clamp-2">{group.description}</p>
+                <div className="p-4 flex flex-col flex-1">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate">{group.name}</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2 mb-4 flex-1">{group.description}</p>
 
                     {/* Members & Action */}
-                    <div className="flex items-center justify-between mt-4">
-                        <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                    <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-50 dark:border-gray-700">
+                        <div className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
                             <Users className="h-4 w-4" />
                             <span>{group.members.length} membre{group.members.length > 1 ? 's' : ''}</span>
                         </div>
@@ -96,33 +96,35 @@ export const GroupCard = ({ group }: GroupCardProps) => {
                                 size="sm"
                                 variant={isMember ? 'outline' : 'default'}
                                 onClick={handleJoinLeave}
-                                className={isMember ? 'text-gray-600 hover:text-red-600 hover:border-red-300' : 'bg-blue-600 hover:bg-blue-700'}
+                                className={isMember
+                                    ? 'text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:border-red-300 dark:hover:border-red-800 border-gray-200 dark:border-gray-700 bg-transparent'
+                                    : 'bg-blue-600 hover:bg-blue-700 text-white'}
                             >
                                 {isMember ? 'Quitter' : 'Rejoindre'}
                             </Button>
                         )}
                         {isAdmin && (
-                            <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">Admin</span>
+                            <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-1 rounded-full">Admin</span>
                         )}
                     </div>
 
                     {/* Parent Club Link for subgroups */}
                     {group.type === 'club' && group.parentClubName && (
-                        <div className="mt-3 pt-3 border-t border-gray-100">
-                            <p className="text-xs text-gray-500">
-                                Sous-groupe de <span className="font-medium text-purple-600">{group.parentClubName}</span>
+                        <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                Sous-groupe de <span className="font-medium text-purple-600 dark:text-purple-400">{group.parentClubName}</span>
                             </p>
                         </div>
                     )}
 
                     {/* Academic Info for class groups */}
                     {group.type === 'class' && group.major && (
-                        <div className="mt-3 pt-3 border-t border-gray-100 flex gap-2 flex-wrap">
+                        <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 flex gap-2 flex-wrap">
                             {group.level && (
-                                <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded">{group.level}</span>
+                                <span className="text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded">{group.level}</span>
                             )}
                             {group.major && (
-                                <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded truncate max-w-[150px]">{group.major}</span>
+                                <span className="text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded truncate max-w-[150px]">{group.major}</span>
                             )}
                         </div>
                     )}

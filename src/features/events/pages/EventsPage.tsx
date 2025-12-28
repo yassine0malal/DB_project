@@ -1,79 +1,23 @@
-import { useState, useEffect } from 'react';
-import { useClubStore } from '../../clubs/store/useClubStore';
+import { useEffect } from 'react';
+import { useEventStore } from '../store/useEventStore';
+import { useAuthStore } from '../../auth/store/useAuthStore';
 import { EventCard } from '../../clubs/components/EventCard';
 import { EventFilters } from '../components/EventFilters';
 import { Button } from '../../../components/ui/button';
 import { Calendar, Filter } from 'lucide-react';
-import { mockClubs } from '../../clubs/data/mockData';
-import { localDB } from '../../../lib/localDB';
 
 export const EventsPage = () => {
-    const { clubs, setClubs } = useClubStore();
+    const { fetchEvents, getFilteredEvents, filters, setFilter, isLoading } = useEventStore();
+    const { user } = useAuthStore();
 
     useEffect(() => {
-        const stored = localDB.get();
-        // Check if there are clubs AND if at least one club has events (handling stale data)
-        const hasData = stored.clubs.length > 0;
-        const hasEvents = stored.clubs.some(c => c.events && c.events.length > 0);
+        fetchEvents(user?.id);
+    }, [user?.id]);
 
-        if (hasData && hasEvents) {
-            setClubs(stored.clubs);
-        } else {
-            // Seed if empty or stale (no events)
-            console.log('Seeding mock data for events...');
-            setClubs(mockClubs);
-            localDB.save({ clubs: mockClubs });
-        }
-    }, []);
-
-    // Aggregate events
-    const allEvents = clubs.flatMap(club =>
-        club.events.map(event => ({ ...event, clubName: club.name }))
-    ).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-    const [filters, setFilters] = useState({
-        search: '',
-        date: 'all',
-        onCampus: false,
-        online: false,
-        type: 'all' // all, free, paid
-    });
-
-    const handleFilterChange = (key: string, value: any) => {
-        setFilters(prev => ({ ...prev, [key]: value }));
-    };
-
-    // Filter Logic
-    const filteredEvents = allEvents.filter(event => {
-        // Search
-        if (filters.search && !event.title.toLowerCase().includes(filters.search.toLowerCase())) return false;
-
-        // Date
-        const eventDate = new Date(event.date);
-        const today = new Date();
-        if (filters.date === 'today' && eventDate.getDate() !== today.getDate()) return false;
-        if (filters.date === 'week') {
-            const nextWeek = new Date();
-            nextWeek.setDate(today.getDate() + 7);
-            if (eventDate > nextWeek || eventDate < today) return false;
-        }
-
-        // Location
-        if (filters.onCampus && event.isOnline) return false;
-        if (filters.online && !event.isOnline) return false;
-        // Simplified Logic: if both unchecked, show all. If one checked, show only that type.
-        if (filters.onCampus && !filters.online && event.isOnline) return false;
-        if (filters.online && !filters.onCampus && !event.isOnline) return false;
-
-        // Type
-        if (filters.type === 'free' && event.isPaid) return false;
-        if (filters.type === 'paid' && !event.isPaid) return false;
-
-        return true;
-    });
+    const filteredEvents = getFilteredEvents();
 
     // Events of the Day Widget Data
-    const todayEvents = allEvents.filter(e => {
+    const todayEvents = filteredEvents.filter(e => {
         const d = new Date(e.date);
         const t = new Date();
         return d.getDate() === t.getDate() && d.getMonth() === t.getMonth() && d.getFullYear() === t.getFullYear();
@@ -84,15 +28,18 @@ export const EventsPage = () => {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Événements</h1>
-                    <p className="text-gray-500 mt-1">Ne manquez rien de la vie étudiante !</p>
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Événements</h1>
+                    <p className="text-gray-500 dark:text-gray-400 mt-1">Ne manquez rien de la vie étudiante !</p>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                 {/* Sidebar Filters */}
                 <div className="lg:col-span-1 space-y-6">
-                    <EventFilters activeFilters={filters} onFilterChange={handleFilterChange} />
+                    <EventFilters
+                        activeFilters={filters}
+                        onFilterChange={(key, value) => setFilter(key as any, value)}
+                    />
 
                     {/* Events of the Day Widget */}
                     {todayEvents.length > 0 && (
@@ -111,10 +58,12 @@ export const EventsPage = () => {
 
                 {/* Main Content */}
                 <div className="lg:col-span-3 space-y-6">
-                    {/* Featured / Hero (Optional, skipped for now to focus on list) */}
-
                     {/* List */}
-                    {filteredEvents.length > 0 ? (
+                    {isLoading ? (
+                        <div className="min-h-[200px] flex items-center justify-center">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                        </div>
+                    ) : filteredEvents.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                             {filteredEvents.map(event => (
                                 // @ts-ignore
@@ -122,12 +71,12 @@ export const EventsPage = () => {
                             ))}
                         </div>
                     ) : (
-                        <div className="text-center py-20 bg-gray-50 rounded-xl border border-dashed border-gray-200">
-                            <div className="bg-white p-4 rounded-full inline-block shadow-sm mb-4">
-                                <Filter className="h-8 w-8 text-gray-400" />
+                        <div className="text-center py-20 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
+                            <div className="bg-white dark:bg-gray-800 p-4 rounded-full inline-block shadow-sm mb-4">
+                                <Filter className="h-8 w-8 text-gray-400 dark:text-gray-500" />
                             </div>
-                            <h3 className="text-lg font-medium text-gray-900">Aucun événement trouvé</h3>
-                            <p className="text-gray-500">Essayez d'autres filtres.</p>
+                            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Aucun événement trouvé</h3>
+                            <p className="text-gray-500 dark:text-gray-400">Essayez d'autres filtres.</p>
                         </div>
                     )}
                 </div>

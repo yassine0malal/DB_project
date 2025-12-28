@@ -59,25 +59,25 @@ export const CommentItem = ({ comment, postId, isReply = false }: CommentItemPro
     return (
         <>
             <div className={cn("flex gap-3 group", isReply ? "mt-3" : "mt-4")}>
-                <div className={cn("rounded-full bg-gray-200 flex-shrink-0 flex items-center justify-center overflow-hidden", isReply ? "h-6 w-6" : "h-8 w-8")}>
+                <div className={cn("rounded-full bg-gray-200 dark:bg-gray-700 flex-shrink-0 flex items-center justify-center overflow-hidden", isReply ? "h-6 w-6" : "h-8 w-8")}>
                     {comment.author.avatarUrl ? (
                         <img src={comment.author.avatarUrl} alt="" className="h-full w-full object-cover" />
                     ) : (
-                        <span className="text-[10px] font-bold text-gray-400">{comment.author.firstName[0]}</span>
+                        <span className="text-[10px] font-bold text-gray-400 dark:text-gray-300">{comment.author.firstName[0]}</span>
                     )}
                 </div>
                 <div className="flex-1">
                     <div className="flex items-start gap-2">
-                        <div className="bg-gray-100/80 rounded-2xl px-3 py-2 flex-1 max-w-full">
-                            <p className="text-[11px] font-bold text-gray-900 leading-none mb-1">
+                        <div className="bg-gray-100/80 dark:bg-gray-700/60 rounded-2xl px-3 py-2 flex-1 max-w-full">
+                            <p className="text-[11px] font-bold text-gray-900 dark:text-gray-100 leading-none mb-1">
                                 {comment.author.firstName} {comment.author.lastName}
                             </p>
-                            <p className="text-xs text-gray-700 whitespace-pre-wrap leading-snug">{comment.content}</p>
+                            <p className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-snug">{comment.content}</p>
                         </div>
 
                         {/* More Options Dropdown */}
                         <DropdownMenu trigger={
-                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-gray-400 hover:bg-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-600 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <MoreVertical className="h-3 w-3" />
                             </Button>
                         }>
@@ -95,19 +95,19 @@ export const CommentItem = ({ comment, postId, isReply = false }: CommentItemPro
                     </div>
 
                     <div className="flex items-center gap-4 mt-0.5 px-2">
-                        <span className="text-[10px] text-gray-400">
+                        <span className="text-[10px] text-gray-400 dark:text-gray-500">
                             {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
                         </span>
                         <button
                             onClick={handleLike}
-                            className={cn("text-[10px] font-bold hover:underline transition-colors", isLiked ? "text-blue-600" : "text-gray-500")}
+                            className={cn("text-[10px] font-bold hover:underline transition-colors", isLiked ? "text-blue-600 dark:text-blue-400" : "text-gray-500 dark:text-gray-400")}
                         >
                             J'aime {likes > 0 && `(${likes})`}
                         </button>
                         {!isReply && (
                             <button
                                 onClick={() => setIsReplying(!isReplying)}
-                                className="text-[10px] font-bold text-gray-500 hover:underline"
+                                className="text-[10px] font-bold text-gray-500 dark:text-gray-400 hover:underline"
                             >
                                 Répondre
                             </button>
@@ -120,7 +120,7 @@ export const CommentItem = ({ comment, postId, isReply = false }: CommentItemPro
                                 value={replyContent}
                                 onChange={(e) => setReplyContent(e.target.value)}
                                 placeholder={`Répondre à ${comment.author.firstName}...`}
-                                className="h-7 text-xs bg-gray-50"
+                                className="h-7 text-xs bg-gray-50 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
                                 onKeyDown={(e) => e.key === 'Enter' && handleReply()}
                                 autoFocus
                             />
@@ -135,7 +135,7 @@ export const CommentItem = ({ comment, postId, isReply = false }: CommentItemPro
                     )}
 
                     {!isReply && 'replies' in comment && comment.replies && comment.replies.length > 0 && (
-                        <div className="border-l border-gray-200 ml-1 pl-4">
+                        <div className="border-l border-gray-200 dark:border-gray-700 ml-1 pl-4">
                             {comment.replies.map(reply => (
                                 <CommentItem key={reply.id} comment={reply} postId={postId} isReply />
                             ))}

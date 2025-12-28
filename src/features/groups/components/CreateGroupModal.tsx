@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Users, Home, GraduationCap, Trophy, Heart, Globe, Lock } from 'lucide-react';
+import { X, Home, GraduationCap, Trophy, Heart, Globe, Lock } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import { useGroupStore } from '../store/useGroupStore';
@@ -20,7 +20,7 @@ const groupTypes: { value: GroupType; label: string; icon: React.ElementType; de
 
 export const CreateGroupModal = ({ isOpen, onClose }: CreateGroupModalProps) => {
     const { user } = useAuthStore();
-    const { createGroup, groups } = useGroupStore();
+    const { createGroup } = useGroupStore();
 
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
@@ -130,8 +130,8 @@ export const CreateGroupModal = ({ isOpen, onClose }: CreateGroupModalProps) => 
                                     type="button"
                                     onClick={() => setType(value)}
                                     className={`p-3 rounded-xl border-2 text-left transition-all ${type === value
-                                            ? 'border-blue-500 bg-blue-50'
-                                            : 'border-gray-200 hover:border-gray-300'
+                                        ? 'border-blue-500 bg-blue-50'
+                                        : 'border-gray-200 hover:border-gray-300'
                                         }`}
                                 >
                                     <Icon className={`h-5 w-5 mb-1 ${type === value ? 'text-blue-600' : 'text-gray-500'}`} />
@@ -190,8 +190,8 @@ export const CreateGroupModal = ({ isOpen, onClose }: CreateGroupModalProps) => 
                                 type="button"
                                 onClick={() => setVisibility('public')}
                                 className={`flex-1 p-3 rounded-xl border-2 flex items-center gap-2 transition-all ${visibility === 'public'
-                                        ? 'border-green-500 bg-green-50'
-                                        : 'border-gray-200 hover:border-gray-300'
+                                    ? 'border-green-500 bg-green-50'
+                                    : 'border-gray-200 hover:border-gray-300'
                                     }`}
                             >
                                 <Globe className={`h-5 w-5 ${visibility === 'public' ? 'text-green-600' : 'text-gray-500'}`} />
@@ -206,8 +206,8 @@ export const CreateGroupModal = ({ isOpen, onClose }: CreateGroupModalProps) => 
                                 type="button"
                                 onClick={() => setVisibility('private')}
                                 className={`flex-1 p-3 rounded-xl border-2 flex items-center gap-2 transition-all ${visibility === 'private'
-                                        ? 'border-gray-700 bg-gray-50'
-                                        : 'border-gray-200 hover:border-gray-300'
+                                    ? 'border-gray-700 bg-gray-50'
+                                    : 'border-gray-200 hover:border-gray-300'
                                     }`}
                             >
                                 <Lock className={`h-5 w-5 ${visibility === 'private' ? 'text-gray-700' : 'text-gray-500'}`} />

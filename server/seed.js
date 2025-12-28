@@ -131,6 +131,45 @@ const GROUPS = [
     }
 ];
 
+const EVENTS = [
+    {
+        id: 'e1',
+        club_id: '1',
+        title: 'Hackathon ENSET v2',
+        description: '24h de code non-stop.',
+        start_time: new Date(Date.now() + 86400000 * 2).toISOString(), // +2 days
+        location: 'Grand Amphi',
+        status: 'upcoming'
+    },
+    {
+        id: 'e2',
+        club_id: '1',
+        title: 'Workshop React & Node.js',
+        description: 'Apprenez les bases du développement web moderne.',
+        start_time: new Date(Date.now() + 86400000 * 5).toISOString(), // +5 days
+        location: 'Salle B12',
+        status: 'upcoming'
+    },
+    {
+        id: 'e3',
+        club_id: '2',
+        title: 'Démonstration Robotique',
+        description: 'Présentation de notre nouveau robot autonome.',
+        start_time: new Date(Date.now() + 86400000 * 1).toISOString(), // +1 day
+        location: 'Hall Principal',
+        status: 'upcoming'
+    },
+    {
+        id: 'e4',
+        club_id: '3',
+        title: 'Tournoi de Football',
+        description: 'Inter-promos.',
+        start_time: new Date(Date.now() + 86400000 * 7).toISOString(), // +7 days
+        location: 'Terrain de sport',
+        status: 'upcoming'
+    }
+];
+
 const POSTS = [
     {
         id: 'p1',
@@ -178,6 +217,8 @@ const POSTS = [
 db.serialize(() => {
     // 1. Run Schema
     db.exec(schema, (err) => {
+        const logError = (ctx) => (err) => { if (err) console.error(`Error in ${ctx}:`, err); };
+
         if (err) {
             console.error('Schema execution failed:', err);
             return;
@@ -191,63 +232,98 @@ db.serialize(() => {
         const adminStmt = db.prepare(`INSERT OR REPLACE INTO admins (user_id, admin_role, department) VALUES (?, ?, ?)`);
 
         USERS.forEach(user => {
-            userStmt.run(user.id, user.email, user.password, user.firstName, user.lastName, user.role, user.avatarUrl, user.bio);
-            if (user.role === 'student') {
-                studentStmt.run(user.id, user.studentId, user.major, user.level, user.academicYear, user.internshipStatus);
-            } else if (user.role === 'teacher') {
-                teacherStmt.run(user.id, user.title, user.department, user.status, user.officeLocation, user.officeHours);
-            } else if (user.role === 'admin') {
-                adminStmt.run(user.id, user.adminRole, user.department);
-            }
+            userStmt.run(user.id, user.email, user.password, user.firstName, user.lastName, user.role, user.avatarUrl, user.bio, (err) => {
+                if (err) {
+                    console.error(`Error in user ${user.id}:`, err);
+                    return;
+                }
+
+                // Only insert details if user insert succeeded
+                if (user.role === 'student') {
+                    studentStmt.run(user.id, user.studentId, user.major, user.level, user.academicYear, user.internshipStatus, logError(`student ${user.id}`));
+                } else if (user.role === 'teacher') {
+                    teacherStmt.run(user.id, user.title, user.department, user.status, user.officeLocation, user.officeHours, logError(`teacher ${user.id}`));
+                } else if (user.role === 'admin') {
+                    adminStmt.run(user.id, user.adminRole, user.department, logError(`admin ${user.id}`));
+                }
+            });
         });
-        userStmt.finalize();
-        studentStmt.finalize();
-        teacherStmt.finalize();
-        adminStmt.finalize();
+
         console.log('Users seeded.');
 
         // 3. Insert Clubs
         const clubStmt = db.prepare(`INSERT OR REPLACE INTO clubs (id, name, description, category, logo_url, contact_email) VALUES (?, ?, ?, ?, ?, ?)`);
         const clubMemberStmt = db.prepare(`INSERT OR REPLACE INTO club_members (club_id, user_id, role) VALUES (?, ?, ?)`);
-        
+
         CLUBS.forEach(club => {
-            clubStmt.run(club.id, club.name, club.description, club.category, club.logoUrl, club.contactEmail);
+            clubStmt.run(club.id, club.name, club.description, club.category, club.logoUrl, club.contactEmail, logError(`club ${club.id}`));
             // Default admin for clubs
-            clubMemberStmt.run(club.id, '1', 'admin'); 
+            clubMemberStmt.run(club.id, '1', 'admin', logError(`club_member ${club.id}`));
         });
-        clubStmt.finalize();
-        clubMemberStmt.finalize();
         console.log('Clubs seeded.');
 
         // 4. Insert Groups
         const groupStmt = db.prepare(`INSERT OR REPLACE INTO groups (id, name, description, type, visibility, created_by, major, academic_year, level) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
         const groupMemberStmt = db.prepare(`INSERT OR REPLACE INTO group_members (group_id, user_id, role) VALUES (?, ?, ?)`);
-        
+
         GROUPS.forEach(group => {
-            groupStmt.run(group.id, group.name, group.description, group.type, group.visibility, group.createdBy, group.major, group.academicYear, group.level);
-            groupMemberStmt.run(group.id, group.createdBy, 'admin');
+            groupStmt.run(group.id, group.name, group.description, group.type, group.visibility, group.createdBy, group.major, group.academicYear, group.level, logError(`group ${group.id}`));
+            groupMemberStmt.run(group.id, group.createdBy, 'admin', logError(`group_member ${group.id}`));
         });
-        groupStmt.finalize();
-        groupMemberStmt.finalize();
         console.log('Groups seeded.');
+
+        // Insert Events
+        const eventStmt = db.prepare(`INSERT OR REPLACE INTO events (id, club_id, title, description, start_time, location, status) VALUES (?, ?, ?, ?, ?, ?, ?)`);
+        EVENTS.forEach(event => {
+            eventStmt.run(event.id, event.club_id, event.title, event.description, event.start_time, event.location, event.status, logError(`event ${event.id}`));
+        });
+        console.log('Events seeded.');
 
         // 5. Insert Posts
         const postStmt = db.prepare(`INSERT OR REPLACE INTO posts (id, author_id, content, type, image_url, group_id, club_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
-        
+
         POSTS.forEach(post => {
             postStmt.run(
-                post.id, 
-                post.author_id, 
-                post.content, 
-                post.type, 
-                post.image_url || null, 
-                post.group_id || null, 
-                post.club_id || null, 
-                post.created_at
+                post.id,
+                post.author_id,
+                post.content,
+                post.type,
+                post.image_url || null,
+                post.group_id || null,
+                post.club_id || null,
+                post.created_at,
+                logError(`post ${post.id}`)
             );
         });
-        postStmt.finalize();
         console.log('Posts seeded with rich content.');
+
+        // 6. Insert Follows (New)
+        const followStmt = db.prepare("INSERT OR REPLACE INTO user_follows (follower_id, following_id) VALUES (?, ?)");
+
+        // User 1 follows 2 and 3
+        followStmt.run('1', '2', logError('follow 1->2'));
+        followStmt.run('1', '3', logError('follow 1->3'));
+        // User 2 follows 1
+        followStmt.run('2', '1', logError('follow 2->1'));
+        // User 3 follows 1 and 2
+        followStmt.run('3', '1', logError('follow 3->1'));
+        followStmt.run('3', '2', logError('follow 3->2'));
+        console.log('User follows seeded.');
+
+        // 7. Insert Visitors (New)
+        const visitorStmt = db.prepare("INSERT OR REPLACE INTO visitors (id, email, first_name, last_name, phone) VALUES (?, ?, ?, ?, ?)");
+        visitorStmt.run('v1', 'visitor@external.com', 'John', 'Doe', '0600000000', logError('visitor v1'));
+
+        // Register Visitor to Event
+        const eventVisitorStmt = db.prepare("INSERT OR REPLACE INTO event_visitor_attendance (event_id, visitor_id) VALUES (?, ?)");
+        eventVisitorStmt.run('e1', 'v1', logError('event visitor e1->v1'));
+        eventVisitorStmt.finalize();
+        console.log('Visitors seeded.');
+
+        // 8. Insert Reports (New)
+        const reportStmt = db.prepare("INSERT OR REPLACE INTO reports (id, reporter_id, target_id, target_type, reason, status) VALUES (?, ?, ?, ?, ?, ?)");
+        reportStmt.run('r1', '2', 'p1', 'post', 'Spam content', 'pending', logError('report r1'));
+        console.log('Reports seeded.');
 
         console.log('Seeding complete! Database ready.');
     });

@@ -80,6 +80,7 @@ export const mockGroups: Group[] = [
                 content: "On fait les courses ce weekend, qu'est-ce qu'on prend ?",
                 author: MOCK_USERS[5],
                 poll: {
+                    id: 'poll-g2-1',
                     question: "Articles à acheter",
                     options: [
                         { id: '1', label: 'Produits ménagers', votes: 3 },

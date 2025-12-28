@@ -247,3 +247,55 @@ CREATE INDEX IF NOT EXISTS idx_posts_club ON posts(club_id);
 CREATE INDEX IF NOT EXISTS idx_posts_created_at ON posts(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_comments_post ON comments(post_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_recipient ON notifications(recipient_id, is_read);
+
+-- 7. Reports (Signalisation)
+CREATE TABLE IF NOT EXISTS reports (
+    id TEXT PRIMARY KEY,
+    reporter_id TEXT NOT NULL,
+    target_id TEXT NOT NULL,
+    target_type TEXT CHECK(target_type IN ('post', 'comment', 'user')) NOT NULL,
+    reason TEXT NOT NULL,
+    status TEXT CHECK(status IN ('pending', 'resolved', 'dismissed')) DEFAULT 'pending',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (reporter_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- 8. Group Discussions (Chat)
+CREATE TABLE IF NOT EXISTS discussions (
+    id TEXT PRIMARY KEY,
+    group_id TEXT NOT NULL,
+    title TEXT,
+    created_by TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS messages (
+    id TEXT PRIMARY KEY,
+    discussion_id TEXT NOT NULL,
+    author_id TEXT NOT NULL,
+    content TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (discussion_id) REFERENCES discussions(id) ON DELETE CASCADE,
+    FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- 9. Visitors (External Users for Events)
+CREATE TABLE IF NOT EXISTS visitors (
+    id TEXT PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    phone TEXT
+);
+
+CREATE TABLE IF NOT EXISTS event_visitor_attendance (
+    event_id TEXT NOT NULL,
+    visitor_id TEXT NOT NULL,
+    status TEXT DEFAULT 'confirmed',
+    joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (event_id, visitor_id),
+    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
+    FOREIGN KEY (visitor_id) REFERENCES visitors(id) ON DELETE CASCADE
+);

@@ -10,7 +10,6 @@ import { useGroupStore } from '../store/useGroupStore';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { GroupMemberList } from '../components/GroupMemberList';
 import { GroupType } from '../types';
-import { mockGroups } from '../data/mockData';
 
 const getGroupTypeInfo = (type: GroupType) => {
     switch (type) {
@@ -33,24 +32,24 @@ export const GroupDetailsPage = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { user } = useAuthStore();
-    const { activeGroup, setActiveGroup, groups, setGroups, joinGroup, leaveGroup } = useGroupStore();
+    const { activeGroup, setActiveGroup, fetchGroup, joinGroup, leaveGroup, isLoading } = useGroupStore();
     const [activeTab, setActiveTab] = useState<TabType>('feed');
 
     useEffect(() => {
-        // Load groups if empty
-        if (groups.length === 0) {
-            setGroups(mockGroups);
-        }
-    }, [groups.length, setGroups]);
-
-    useEffect(() => {
-        // Find and set active group
-        const group = groups.find(g => g.id === id);
-        if (group) {
-            setActiveGroup(group);
+        if (id) {
+            fetchGroup(id);
         }
         return () => setActiveGroup(null);
-    }, [id, groups, setActiveGroup]);
+    }, [id, fetchGroup, setActiveGroup]);
+
+    const handleBack = () => {
+        if (window.history.length > 2) {
+            navigate(-1);
+        } else {
+            navigate('/groups');
+        }
+    };
+
 
     if (!activeGroup) {
         return (
@@ -86,15 +85,15 @@ export const GroupDetailsPage = () => {
         <div className="max-w-5xl mx-auto pb-10">
             {/* Back Button */}
             <button
-                onClick={() => navigate('/groups')}
+                onClick={handleBack}
                 className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
             >
                 <ArrowLeft className="h-4 w-4" />
-                Retour aux groupes
+                Retour
             </button>
 
             {/* Cover & Header */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
                 {/* Cover Image */}
                 <div className="h-48 md:h-64 relative">
                     <img
@@ -141,16 +140,16 @@ export const GroupDetailsPage = () => {
                 </div>
 
                 {/* Actions Bar */}
-                <div className="px-6 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-4">
+                <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex flex-wrap items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                         {/* Member avatars */}
                         <GroupMemberList members={activeGroup.members.slice(0, 5)} compact />
                     </div>
                     <div className="flex items-center gap-2">
                         {memberRole && (
-                            <span className={`flex items-center gap-1 text-sm font-medium px-3 py-1.5 rounded-full ${memberRole === 'admin' ? 'bg-amber-100 text-amber-700' :
-                                    memberRole === 'moderator' ? 'bg-blue-100 text-blue-700' :
-                                        'bg-gray-100 text-gray-700'
+                            <span className={`flex items-center gap-1 text-sm font-medium px-3 py-1.5 rounded-full ${memberRole === 'admin' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' :
+                                memberRole === 'moderator' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' :
+                                    'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
                                 }`}>
                                 {memberRole === 'admin' && <Crown className="h-4 w-4" />}
                                 {memberRole === 'moderator' && <Shield className="h-4 w-4" />}
@@ -179,15 +178,15 @@ export const GroupDetailsPage = () => {
                 </div>
 
                 {/* Tabs */}
-                <div className="px-6 border-b border-gray-100">
+                <div className="px-6 border-b border-gray-100 dark:border-gray-700">
                     <div className="flex gap-1">
                         {tabs.map(({ key, label, icon: Icon }) => (
                             <button
                                 key={key}
                                 onClick={() => setActiveTab(key)}
                                 className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === key
-                                        ? 'border-blue-600 text-blue-600'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                                    ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
+                                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                                     }`}
                             >
                                 <Icon className="h-4 w-4" />
@@ -205,7 +204,7 @@ export const GroupDetailsPage = () => {
                     <div className="space-y-4">
                         {activeGroup.posts.length > 0 ? (
                             activeGroup.posts.map(post => (
-                                <div key={post.id} className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+                                <div key={post.id} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm">
                                     {/* Post Header */}
                                     <div className="flex items-center gap-3 mb-3">
                                         <img
@@ -214,7 +213,7 @@ export const GroupDetailsPage = () => {
                                             className="h-10 w-10 rounded-full object-cover"
                                         />
                                         <div className="flex-1">
-                                            <p className="font-medium text-gray-900">
+                                            <p className="font-medium text-gray-900 dark:text-gray-100">
                                                 {post.author.firstName} {post.author.lastName}
                                             </p>
                                             <p className="text-xs text-gray-500">
@@ -232,7 +231,7 @@ export const GroupDetailsPage = () => {
                                     </div>
 
                                     {/* Post Content */}
-                                    <p className="text-gray-800 whitespace-pre-wrap">{post.content}</p>
+                                    <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{post.content}</p>
 
                                     {post.imageUrl && (
                                         <img
@@ -291,7 +290,7 @@ export const GroupDetailsPage = () => {
 
                 {/* Members Tab */}
                 {activeTab === 'members' && (
-                    <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
+                    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-6 shadow-sm">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="font-semibold text-gray-900">
                                 {activeGroup.members.length} membre{activeGroup.members.length > 1 ? 's' : ''}
@@ -310,16 +309,16 @@ export const GroupDetailsPage = () => {
                 {activeTab === 'about' && (
                     <div className="space-y-6">
                         {/* Description */}
-                        <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
-                            <h3 className="font-semibold text-gray-900 mb-3">Description</h3>
-                            <p className="text-gray-600">{activeGroup.description}</p>
+                        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-6 shadow-sm">
+                            <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Description</h3>
+                            <p className="text-gray-600 dark:text-gray-300">{activeGroup.description}</p>
                         </div>
 
                         {/* Academic Info for class groups */}
                         {activeGroup.type === 'class' && (
-                            <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
-                                <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                                    <GraduationCap className="h-5 w-5 text-blue-600" />
+                            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-6 shadow-sm">
+                                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                                    <GraduationCap className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                                     Informations académiques
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -347,21 +346,21 @@ export const GroupDetailsPage = () => {
 
                         {/* Parent Club for club subgroups */}
                         {activeGroup.type === 'club' && activeGroup.parentClubName && (
-                            <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
-                                <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                                    <Trophy className="h-5 w-5 text-purple-600" />
+                            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-6 shadow-sm">
+                                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                                    <Trophy className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                                     Club parent
                                 </h3>
                                 <Link
                                     to={`/clubs/${activeGroup.parentClubId}`}
-                                    className="flex items-center gap-3 p-3 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
+                                    className="flex items-center gap-3 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors"
                                 >
-                                    <div className="p-2 bg-purple-200 rounded-lg">
-                                        <Trophy className="h-5 w-5 text-purple-700" />
+                                    <div className="p-2 bg-purple-200 dark:bg-purple-800/50 rounded-lg">
+                                        <Trophy className="h-5 w-5 text-purple-700 dark:text-purple-300" />
                                     </div>
                                     <div>
-                                        <p className="font-medium text-purple-900">{activeGroup.parentClubName}</p>
-                                        <p className="text-sm text-purple-600">Voir le club →</p>
+                                        <p className="font-medium text-purple-900 dark:text-purple-100">{activeGroup.parentClubName}</p>
+                                        <p className="text-sm text-purple-600 dark:text-purple-300">Voir le club →</p>
                                     </div>
                                 </Link>
                             </div>
@@ -369,12 +368,12 @@ export const GroupDetailsPage = () => {
 
                         {/* Rules */}
                         {activeGroup.rules && activeGroup.rules.length > 0 && (
-                            <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
-                                <h3 className="font-semibold text-gray-900 mb-3">Règles du groupe</h3>
+                            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-6 shadow-sm">
+                                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Règles du groupe</h3>
                                 <ul className="space-y-2">
                                     {activeGroup.rules.map((rule, index) => (
-                                        <li key={index} className="flex items-start gap-2 text-gray-600">
-                                            <span className="bg-gray-200 text-gray-700 text-xs font-medium px-2 py-0.5 rounded-full mt-0.5">
+                                        <li key={index} className="flex items-start gap-2 text-gray-600 dark:text-gray-300">
+                                            <span className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs font-medium px-2 py-0.5 rounded-full mt-0.5">
                                                 {index + 1}
                                             </span>
                                             {rule}
@@ -385,10 +384,10 @@ export const GroupDetailsPage = () => {
                         )}
 
                         {/* Creation Info */}
-                        <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
-                            <h3 className="font-semibold text-gray-900 mb-3">Informations</h3>
+                        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-6 shadow-sm">
+                            <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Informations</h3>
                             <div className="space-y-3 text-sm">
-                                <div className="flex items-center gap-2 text-gray-600">
+                                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                                     <Calendar className="h-4 w-4" />
                                     Créé le {new Date(activeGroup.createdAt).toLocaleDateString('fr-FR', {
                                         day: 'numeric',
@@ -396,7 +395,7 @@ export const GroupDetailsPage = () => {
                                         year: 'numeric'
                                     })}
                                 </div>
-                                <div className="flex items-center gap-2 text-gray-600">
+                                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                                     <Crown className="h-4 w-4" />
                                     Créé par {activeGroup.createdBy.firstName} {activeGroup.createdBy.lastName}
                                 </div>

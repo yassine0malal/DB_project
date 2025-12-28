@@ -60,11 +60,11 @@ export const LazyImage = ({
             {!isLoaded && skeleton && (
                 <div
                     className={cn(
-                        "absolute inset-0 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 animate-pulse",
+                        "absolute inset-0 bg-gradient-to-r from-gray-200 dark:from-gray-700 via-gray-100 dark:via-gray-600 to-gray-200 dark:to-gray-700 animate-pulse",
                         placeholderClassName
                     )}
                 >
-                    <div className="w-full h-full bg-gray-200" />
+                    <div className="w-full h-full bg-gray-200 dark:bg-gray-700" />
                 </div>
             )}
 
@@ -88,7 +88,7 @@ export const LazyImage = ({
             {/* Error State */}
             {error && (
                 <div className={cn(
-                    "flex items-center justify-center bg-gray-100 text-gray-400",
+                    "flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500",
                     className
                 )}>
                     <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">

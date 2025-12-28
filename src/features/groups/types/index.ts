@@ -1,5 +1,6 @@
 import { User } from '../../auth/types';
 import { Post } from '../../feed/types';
+export * from './discussion';
 
 export type GroupType = 'friends' | 'apartment' | 'class' | 'club';
 
@@ -37,11 +38,15 @@ export interface Group {
 export interface GroupState {
     groups: Group[];
     activeGroup: Group | null;
+    isLoading: boolean;
+    error: string | null;
     filters: {
         type: GroupType | 'all';
         search: string;
     };
     // Actions
+    fetchGroups: () => Promise<void>;
+    fetchGroup: (id: string) => Promise<void>;
     setGroups: (groups: Group[]) => void;
     setActiveGroup: (group: Group | null) => void;
     createGroup: (group: Group) => void;

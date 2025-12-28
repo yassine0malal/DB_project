@@ -110,11 +110,11 @@ export const LandingPage = () => {
                                             <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded w-1/2" />
                                         </div>
                                     </div>
-                                    <div className="h-32 bg-gradient-to-r from-gray-100 to-gray-50 rounded-xl" />
+                                    <div className="h-32 bg-gradient-to-r from-gray-100 to-gray-50 dark:from-gray-700 dark:to-gray-600 rounded-xl" />
                                     <div className="flex gap-2">
-                                        <div className="h-8 bg-gray-100 rounded flex-1" />
-                                        <div className="h-8 bg-gray-100 rounded flex-1" />
-                                        <div className="h-8 bg-gray-100 rounded flex-1" />
+                                        <div className="h-8 bg-gray-100 dark:bg-gray-700 rounded flex-1" />
+                                        <div className="h-8 bg-gray-100 dark:bg-gray-700 rounded flex-1" />
+                                        <div className="h-8 bg-gray-100 dark:bg-gray-700 rounded flex-1" />
                                     </div>
                                 </div>
                             </div>

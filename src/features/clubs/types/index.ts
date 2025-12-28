@@ -48,6 +48,12 @@ export interface ClubEvent {
     // Meta
     status: 'upcoming' | 'ongoing' | 'past' | 'cancelled';
     tags: string[];
+
+    // API enriched fields
+    clubName?: string;
+    clubLogo?: string;
+    isAttending?: boolean;
+    attendeesCount?: number;
 }
 
 export interface Club {
@@ -64,6 +70,11 @@ export interface Club {
     rules?: string[];
     contactEmail?: string;
     website?: string;
+
+    // API enriched fields
+    isMember?: boolean;
+    membersCount?: number;
+    eventsCount?: number;
 }
 
 export interface ClubState {
@@ -73,6 +84,10 @@ export interface ClubState {
         category: string | 'all';
         search: string;
     };
+    // State
+    isLoading?: boolean;
+    error?: string | null;
+
     // Actions
     setClubs: (clubs: Club[]) => void;
     setActiveClub: (club: Club | null) => void;

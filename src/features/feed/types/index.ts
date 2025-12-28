@@ -24,6 +24,7 @@ export interface PollOption {
 }
 
 export interface Poll {
+    id: string;
     question: string;
     options: PollOption[];
     userVote?: string; // optionId of the user's vote
@@ -33,10 +34,11 @@ export interface Poll {
 
 export interface Report {
     id: string;
+    reporterId: string;
     targetId: string;
-    targetType: 'post' | 'comment';
+    targetType: 'post' | 'comment' | 'user';
     reason: string;
-    userId: string;
+    status: 'pending' | 'resolved' | 'dismissed';
     createdAt: string;
 }
 

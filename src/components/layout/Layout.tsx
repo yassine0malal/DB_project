@@ -1,9 +1,10 @@
-import { Outlet, Link, useNavigate } from 'react-router-dom';
+import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../features/auth/store/useAuthStore';
 import { Button } from '../ui/button';
-import { Home, Users, UsersRound, LogOut, GraduationCap, LayoutDashboard, Calendar, Bell, MessageSquare, Settings } from 'lucide-react';
+import { Home, Users, UsersRound, LogOut, LayoutDashboard, Calendar, Bell, MessageSquare, Settings } from 'lucide-react';
 import { useNotificationStore } from '../../features/notifications/store/useNotificationStore';
 import { useChatStore } from '../../features/chat/store/useChatStore';
+import { cn } from '../../utils/cn';
 
 export const Layout = () => {
     const { logout, user } = useAuthStore();
@@ -12,71 +13,66 @@ export const Layout = () => {
     const unreadCount = getUnreadCount();
     const totalUnreadMessages = conversations.reduce((acc, conv) => acc + conv.unreadCount, 0);
     const navigate = useNavigate();
+    const location = useLocation();
 
     const handleLogout = () => {
         logout();
         navigate('/login');
     };
 
+    const NavItem = ({ to, icon: Icon, label, badgeCount, badgeColor }: any) => {
+        const isActive = location.pathname.startsWith(to);
+        return (
+            <Link
+                to={to}
+                className={cn(
+                    "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group relative overflow-hidden",
+                    isActive
+                        ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30"
+                        : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50 hover:text-blue-600 dark:hover:text-blue-400"
+                )}
+            >
+                <div className={cn("absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 transition-opacity", isActive && "opacity-100")} />
+                <Icon className={cn("h-5 w-5 transition-transform duration-300", isActive ? "scale-110" : "group-hover:scale-110")} />
+                <span className="font-bold tracking-wide">{label}</span>
+                {badgeCount > 0 && (
+                    <span className={cn(
+                        "ml-auto text-xs font-black px-2 py-0.5 rounded-full shadow-sm",
+                        isActive ? "bg-white text-blue-600" : (badgeColor || "bg-red-500 text-white")
+                    )}>
+                        {badgeCount}
+                    </span>
+                )}
+            </Link>
+        );
+    };
+
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col md:flex-row transition-colors duration-200">
-            {/* Sidebar (Desktop) / Navbar (Mobile) could be improved here. For now, simple sidebar */}
-            <aside className="w-full md:w-64 bg-white dark:bg-gray-800 border-r dark:border-gray-700 min-h-screen p-4 flex flex-col fixed md:relative z-10 transition-colors duration-200">
-                <div className="flex items-center gap-2 mb-8 px-2">
-                    <GraduationCap className="h-8 w-8 text-primary" />
-                    <span className="text-xl font-bold text-primary">UniSocial</span>
+            {/* Sidebar */}
+            <aside className="w-full md:w-72 bg-white dark:bg-gray-800 border-r border-gray-100 dark:border-gray-700 min-h-screen p-6 flex flex-col fixed md:relative z-10">
+                <div className="flex items-center gap-3 mb-10 px-2">
+                    <img src="/logo.png" alt="N7social" className="h-10 w-10 object-contain drop-shadow-md" />
+                    <span className="text-2xl font-black text-gray-900 dark:text-gray-100 tracking-tight">N7social</span>
                 </div>
 
-                <nav className="flex-1 space-y-2">
-                    <Link to="/feed" className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors">
-                        <Home className="h-5 w-5" />
-                        Feed
-                    </Link>
-                    <Link to="/clubs" className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors">
-                        <Users className="h-5 w-5" />
-                        Clubs
-                    </Link>
-                    <Link to="/groups" className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors">
-                        <UsersRound className="h-5 w-5" />
-                        Groupes
-                    </Link>
-                    <Link to="/events" className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors">
-                        <Calendar className="h-5 w-5" />
-                        Événements
-                    </Link>
-                    <Link to="/notifications" className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors">
-                        <Bell className="h-5 w-5" />
-                        Notifications
-                        {unreadCount > 0 && (
-                            <span className="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                                {unreadCount}
-                            </span>
-                        )}
-                    </Link>
-                    <Link to="/messages" className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors">
-                        <MessageSquare className="h-5 w-5" />
-                        Messages
-                        {totalUnreadMessages > 0 && (
-                            <span className="ml-auto bg-blue-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                                {totalUnreadMessages}
-                            </span>
-                        )}
-                    </Link>
-                    <Link to="/settings" className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors">
-                        <Settings className="h-5 w-5" />
-                        Paramètres
-                    </Link>
+                <nav className="flex-1 space-y-1.5">
+                    <NavItem to="/feed" icon={Home} label="Feed" />
+                    <NavItem to="/clubs" icon={Users} label="Clubs" />
+                    <NavItem to="/groups" icon={UsersRound} label="Groupes" />
+                    <NavItem to="/events" icon={Calendar} label="Événements" />
+                    <NavItem to="/notifications" icon={Bell} label="Notifications" badgeCount={unreadCount} />
+                    <NavItem to="/messages" icon={MessageSquare} label="Messages" badgeCount={totalUnreadMessages} badgeColor="bg-blue-500 text-white" />
+                    <div className="pt-4 pb-2">
+                        <div className="h-px bg-gray-100 dark:bg-gray-700/50" />
+                    </div>
+                    <NavItem to="/settings" icon={Settings} label="Paramètres" />
+
                     {user?.role === 'teacher' && (
-                        <Link to="/teacher/dashboard" className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors">
-                            <LayoutDashboard className="h-5 w-5" />
-                            Dashboard
-                        </Link>
+                        <NavItem to="/teacher/dashboard" icon={LayoutDashboard} label="Dashboard" />
                     )}
                     {user?.role === 'admin' && (
-                        <Link to="/admin" className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors">
-                            <LayoutDashboard className="h-5 w-5" />
-                            Admin
-                        </Link>
+                        <NavItem to="/admin" icon={LayoutDashboard} label="Admin" />
                     )}
                 </nav>
 
