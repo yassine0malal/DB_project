@@ -22,7 +22,7 @@ export const EventCard = ({ event, clubName, vertical = false }: EventCardProps)
     const { user } = useAuthStore();
     const [showShareModal, setShowShareModal] = useState(false);
 
-    const isParticipating = user ? event.attendees.some(a => a.id === user.id) : false;
+    const isParticipating = user ? event.attendees?.some(a => a.id === user.id) : false;
 
     // Relative time helper (simplified)
     const getRelativeTime = (date: Date) => {
@@ -99,19 +99,19 @@ export const EventCard = ({ event, clubName, vertical = false }: EventCardProps)
                     <div className="flex items-center justify-between pt-2 border-t border-gray-50 dark:border-gray-700/50">
                         <div className="flex items-center gap-2">
                             <div className="flex -space-x-2">
-                                {event.attendees.slice(0, 3).map((attendee, i) => (
+                                {event.attendees?.slice(0, 3).map((attendee, i) => (
                                     <div key={attendee.id || i} className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/30 border-2 border-white dark:border-gray-800 flex items-center justify-center text-[8px] font-bold text-blue-600 dark:text-blue-400 overflow-hidden shadow-sm">
                                         {attendee.avatarUrl ? <img src={attendee.avatarUrl} className="h-full w-full object-cover" /> : attendee.firstName?.[0]}
                                     </div>
                                 ))}
-                                {event.attendees.length > 3 && (
+                                {event.attendees?.length > 3 && (
                                     <div className="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-700 border-2 border-white dark:border-gray-800 flex items-center justify-center text-[8px] font-bold text-gray-500 dark:text-gray-300">
                                         +{event.attendees.length - 3}
                                     </div>
                                 )}
                             </div>
                             <span className="text-xs text-gray-500 font-medium">
-                                {event.attendees.length > 0 ? `${event.attendees.length} participants` : 'Soyez le premier !'}
+                                {event.attendees?.length > 0 ? `${event.attendees.length} participants` : 'Soyez le premier !'}
                             </span>
                         </div>
                         <Button

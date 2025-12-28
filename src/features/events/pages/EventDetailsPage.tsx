@@ -1,5 +1,5 @@
 import { useParams, Link } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useClubStore } from '../../clubs/store/useClubStore';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { Button } from '../../../components/ui/button';
@@ -11,21 +11,43 @@ import { cn } from '../../../utils/cn';
 
 export const EventDetailsPage = () => {
     const { id } = useParams<{ id: string }>();
-    const { clubs, toggleParticipation } = useClubStore();
+    const { toggleParticipation } = useClubStore();
     const { user } = useAuthStore();
     const [showShareModal, setShowShareModal] = useState(false);
 
-    // Find event across all clubs
-    const event = clubs.flatMap(c => c.events.map(e => ({ ...e, club: c }))).find(e => e.id === id);
-
-    if (!event) {
-        return <div className="p-10 text-center">Événement introuvable</div>;
-    }
-
-    const isParticipating = user ? event.attendees.some(a => a.id === user.id) : false;
-    const isUpcoming = new Date(event.date) > new Date();
-
+    // Create local state for single event fetching
+    const [event, setEvent] = useState<any | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [imgError, setImgError] = useState(false);
+
+
+    useEffect(() => {
+        const fetchEvent = async () => {
+            if (!id) return;
+            setIsLoading(true);
+            try {
+                const viewerIdParam = user ? `?viewerId=${user.id}` : '';
+                const response = await fetch(`http://localhost:3000/api/events/${id}${viewerIdParam}`);
+                if (!response.ok) throw new Error('Failed to fetch event');
+                const data = await response.json();
+                setEvent(data);
+            } catch (err: any) {
+                setError(err.message);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchEvent();
+    }, [id, user]);
+
+    if (isLoading) return <div className="p-20 text-center">Chargement de l'événement...</div>;
+    if (error || !event) return <div className="p-20 text-center text-red-500">Erreur: {error || 'Événement introuvable'}</div>;
+
+    const isParticipating = event.isAttending; // Use backend flag
+    const isUpcoming = event.date ? new Date(event.date.replace(' ', 'T')) > new Date() : false;
+
+
 
     return (
         <div className="max-w-5xl mx-auto pb-20 space-y-6">
@@ -54,7 +76,7 @@ export const EventDetailsPage = () => {
                 <div className="absolute bottom-0 left-0 right-0 p-8 md:p-12 text-white">
                     <div className="flex gap-3 mb-4">
                         <Badge className="bg-blue-600 hover:bg-blue-700 border-none text-white px-3 py-1">
-                            {event.club.category}
+                            {event.club?.category || 'Événement'}
                         </Badge>
                         {isUpcoming ? (
                             <Badge className="bg-green-500 hover:bg-green-600 border-none text-white px-3 py-1">À venir</Badge>
@@ -66,7 +88,7 @@ export const EventDetailsPage = () => {
                     <div className="flex flex-col md:flex-row gap-6 text-gray-200 font-medium text-lg">
                         <div className="flex items-center gap-2">
                             <Calendar className="h-5 w-5 text-blue-400" />
-                            {new Date(event.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                            {new Date(event.date.replace(' ', 'T')).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                         </div>
                         <div className="flex items-center gap-2">
                             {event.isOnline ? <Video className="h-5 w-5 text-blue-400" /> : <MapPin className="h-5 w-5 text-blue-400" />}
@@ -98,7 +120,7 @@ export const EventDetailsPage = () => {
                         <section>
                             <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100">Invités & Intervenants</h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {event.guests.map(guest => (
+                                {event.guests.map((guest: any) => (
                                     <div key={guest.id} className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700 flex items-center gap-4 hover:shadow-md transition-shadow">
                                         <div className="h-16 w-16 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden shrink-0">
                                             {guest.avatarUrl && <img src={guest.avatarUrl} alt={guest.name} className="w-full h-full object-cover" />}

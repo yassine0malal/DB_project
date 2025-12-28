@@ -9,6 +9,7 @@ import { Button } from '../../../components/ui/button';
 import { useGroupStore } from '../store/useGroupStore';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { GroupMemberList } from '../components/GroupMemberList';
+import { GroupChat } from '../components/GroupChat';
 import { GroupType } from '../types';
 
 const getGroupTypeInfo = (type: GroupType) => {
@@ -26,14 +27,14 @@ const getGroupTypeInfo = (type: GroupType) => {
     }
 };
 
-type TabType = 'feed' | 'members' | 'about';
+type TabType = 'chat' | 'members' | 'about';
 
 export const GroupDetailsPage = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { user } = useAuthStore();
     const { activeGroup, setActiveGroup, fetchGroup, joinGroup, leaveGroup, isLoading } = useGroupStore();
-    const [activeTab, setActiveTab] = useState<TabType>('feed');
+    const [activeTab, setActiveTab] = useState<TabType>('chat');
 
     useEffect(() => {
         if (id) {
@@ -76,7 +77,7 @@ export const GroupDetailsPage = () => {
     };
 
     const tabs: { key: TabType; label: string; icon: React.ElementType }[] = [
-        { key: 'feed', label: 'Publications', icon: MessageSquare },
+        { key: 'chat', label: 'Discussion', icon: MessageSquare },
         { key: 'members', label: 'Membres', icon: Users },
         { key: 'about', label: 'À propos', icon: Info }
     ];
@@ -199,93 +200,10 @@ export const GroupDetailsPage = () => {
 
             {/* Tab Content */}
             <div className="mt-6">
-                {/* Feed Tab */}
-                {activeTab === 'feed' && (
-                    <div className="space-y-4">
-                        {activeGroup.posts.length > 0 ? (
-                            activeGroup.posts.map(post => (
-                                <div key={post.id} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm">
-                                    {/* Post Header */}
-                                    <div className="flex items-center gap-3 mb-3">
-                                        <img
-                                            src={post.author.avatarUrl || `https://ui-avatars.com/api/?name=${post.author.firstName}+${post.author.lastName}&background=random`}
-                                            alt={`${post.author.firstName} ${post.author.lastName}`}
-                                            className="h-10 w-10 rounded-full object-cover"
-                                        />
-                                        <div className="flex-1">
-                                            <p className="font-medium text-gray-900 dark:text-gray-100">
-                                                {post.author.firstName} {post.author.lastName}
-                                            </p>
-                                            <p className="text-xs text-gray-500">
-                                                {new Date(post.createdAt).toLocaleDateString('fr-FR', {
-                                                    day: 'numeric',
-                                                    month: 'short',
-                                                    hour: '2-digit',
-                                                    minute: '2-digit'
-                                                })}
-                                            </p>
-                                        </div>
-                                        <button className="p-2 hover:bg-gray-100 rounded-full">
-                                            <MoreHorizontal className="h-4 w-4 text-gray-500" />
-                                        </button>
-                                    </div>
 
-                                    {/* Post Content */}
-                                    <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{post.content}</p>
-
-                                    {post.imageUrl && (
-                                        <img
-                                            src={post.imageUrl}
-                                            alt="Post"
-                                            className="mt-3 rounded-lg w-full max-h-96 object-cover"
-                                        />
-                                    )}
-
-                                    {/* Poll */}
-                                    {post.poll && (
-                                        <div className="mt-3 p-4 bg-gray-50 rounded-lg">
-                                            <p className="font-medium mb-3">{post.poll.question}</p>
-                                            <div className="space-y-2">
-                                                {post.poll.options.map(option => {
-                                                    const percentage = Math.round((option.votes / post.poll!.totalVotes) * 100);
-                                                    return (
-                                                        <div key={option.id} className="relative">
-                                                            <div
-                                                                className="absolute inset-0 bg-blue-100 rounded-lg"
-                                                                style={{ width: `${percentage}%` }}
-                                                            />
-                                                            <div className="relative flex items-center justify-between p-2 rounded-lg border border-gray-200 bg-white/50">
-                                                                <span>{option.label}</span>
-                                                                <span className="text-sm font-medium">{percentage}%</span>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                            <p className="text-xs text-gray-500 mt-2">{post.poll.totalVotes} votes</p>
-                                        </div>
-                                    )}
-
-                                    {/* Post Stats */}
-                                    <div className="flex items-center gap-6 mt-4 pt-3 border-t border-gray-100 text-sm text-gray-500">
-                                        <span>❤️ {post.likesCount}</span>
-                                        <span>💬 {post.commentsCount}</span>
-                                        {post.sharesCount > 0 && <span>🔄 {post.sharesCount}</span>}
-                                    </div>
-                                </div>
-                            ))
-                        ) : (
-                            <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-200">
-                                <MessageSquare className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                                <p className="text-gray-500">Aucune publication pour le moment.</p>
-                                {isMember && (
-                                    <Button className="mt-4 bg-blue-600 hover:bg-blue-700">
-                                        Créer une publication
-                                    </Button>
-                                )}
-                            </div>
-                        )}
-                    </div>
+                {/* Chat Tab */}
+                {activeTab === 'chat' && (
+                    <GroupChat groupId={activeGroup.id} isMember={!!isMember} />
                 )}
 
                 {/* Members Tab */}

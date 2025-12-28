@@ -562,38 +562,86 @@ app.get('/api/events', (req, res) => {
             clubLogo: row.club_logo,
             isAttending: Boolean(row.is_attending),
             attendeesCount: row.attendees_count,
+            attendees: [], // Prevent crash on list view
+            guests: [],
             isOnline: row.location && (row.location.toLowerCase().includes('zoom') || row.location.toLowerCase().includes('discord') || row.location.toLowerCase().includes('enligne'))
         }));
         res.json({ events });
     });
 });
 
+
 app.get('/api/events/:id', (req, res) => {
     const { id } = req.params;
     const viewerId = req.query.viewerId;
 
-    const sql = `
-        SELECT 
-            e.*,
-            c.name as club_name, c.logo_url as club_logo,
-            (SELECT COUNT(*) FROM event_attendees WHERE event_id = e.id) as attendees_count,
-             EXISTS (SELECT 1 FROM event_attendees WHERE event_id = e.id AND user_id = ?) as is_attending
+    const sqlEvent = `
+        SELECT e.*, c.name as club_name, c.logo_url as club_logo, c.category as club_category, c.cover_url as club_cover, c.description as club_desc
         FROM events e
         JOIN clubs c ON e.club_id = c.id
         WHERE e.id = ?
     `;
 
-    db.get(sql, [viewerId || '', id], (err, event) => {
+    db.get(sqlEvent, [id], (err, event) => {
         if (err) return res.status(500).json({ error: err.message });
         if (!event) return res.status(404).json({ error: "Event not found" });
 
-        res.json({
-            ...event,
-            isAttending: Boolean(event.is_attending),
-            attendeesCount: event.attendees_count
+        // Get attendees
+        const sqlAttendees = `
+            SELECT u.id, u.first_name, u.last_name, u.avatar_url, u.role
+            FROM event_attendees ea
+            JOIN users u ON ea.user_id = u.id
+            WHERE ea.event_id = ?
+        `;
+
+        db.all(sqlAttendees, [id], (err, attendees) => {
+            if (err) return res.status(500).json({ error: err.message });
+
+            const formattedAttendees = attendees.map(u => ({
+                id: u.id,
+                firstName: u.first_name,
+                lastName: u.last_name,
+                avatarUrl: u.avatar_url,
+                role: u.role
+            }));
+
+            // Format Event
+            const formattedEvent = {
+                id: event.id,
+                clubId: event.club_id,
+                title: event.title,
+                description: event.description,
+                fullDescription: event.full_description,
+                date: event.start_time,
+                endDate: event.end_time,
+                location: event.location,
+                isOnline: Boolean(event.is_online),
+                meetingUrl: event.meeting_url,
+                isPaid: Boolean(event.is_paid),
+                price: event.price,
+                coverUrl: event.cover_url || event.club_cover,
+                status: event.status,
+
+                // Relations
+                club: {
+                    id: event.club_id,
+                    name: event.club_name,
+                    category: event.club_category,
+                    logoUrl: event.club_logo,
+                    coverUrl: event.club_cover,
+                    description: event.club_desc
+                },
+                attendees: formattedAttendees,
+                attendeesCount: formattedAttendees.length,
+                isAttending: formattedAttendees.some(a => String(a.id) === String(viewerId)),
+                guests: [] // Placeholder as there is no guests table yet, simplified
+            };
+
+            res.json(formattedEvent);
         });
     });
 });
+
 
 app.post('/api/events/:id/join', (req, res) => {
     const { id } = req.params;
@@ -777,6 +825,108 @@ app.get('/api/events/:id/visitors', (req, res) => {
         res.json({ visitors: rows });
     });
 });
+
+// ---------------------------------------------
+// Group Messages API
+// ---------------------------------------------
+
+app.get('/api/groups/:id/messages', (req, res) => {
+    const { id } = req.params;
+    // Find the default discussion for this group
+    db.get("SELECT id FROM discussions WHERE group_id = ?", [id], (err, discussion) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!discussion) return res.status(404).json({ error: "No discussion found for this group" });
+
+        const sql = `
+            SELECT m.*, 
+                   u.id as author_id, u.first_name, u.last_name, u.avatar_url, u.role as author_role
+            FROM messages m
+            JOIN users u ON m.author_id = u.id
+            WHERE m.discussion_id = ?
+            ORDER BY m.created_at ASC
+        `;
+
+        db.all(sql, [discussion.id], (err, rows) => {
+            if (err) return res.status(500).json({ error: err.message });
+
+            const messages = rows.map(row => ({
+                id: row.id,
+                discussionId: row.discussion_id,
+                content: row.content,
+                createdAt: row.created_at,
+                author: {
+                    id: row.author_id,
+                    firstName: row.first_name,
+                    lastName: row.last_name,
+                    avatarUrl: row.avatar_url,
+                    role: row.author_role
+                }
+            }));
+
+            res.json({ messages });
+        });
+    });
+});
+
+app.post('/api/groups/:id/messages', (req, res) => {
+    const { id } = req.params; // group id
+    const { content, userId } = req.body;
+
+    // Find discussion first
+    db.get("SELECT id FROM discussions WHERE group_id = ?", [id], (err, discussion) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!discussion) return res.status(404).json({ error: "No discussion found" });
+
+        const sql = `INSERT INTO messages (discussion_id, author_id, content) VALUES (?, ?, ?)`;
+        db.run(sql, [discussion.id, userId, content], function (err) {
+            if (err) return res.status(500).json({ error: err.message });
+
+            // Return the created message structure with author details
+            db.get("SELECT * FROM users WHERE id = ?", [userId], (err, user) => {
+                res.json({
+                    id: this.lastID,
+                    discussionId: discussion.id,
+                    content,
+                    createdAt: new Date().toISOString(),
+                    author: {
+                        id: user.id,
+                        firstName: user.first_name,
+                        lastName: user.last_name,
+                        avatarUrl: user.avatar_url,
+                        role: user.role
+                    }
+                });
+            });
+        });
+    });
+});
+
+// Group Join/Leave
+app.post('/api/groups/:id/join', (req, res) => {
+    const { id } = req.params;
+    const { userId } = req.body;
+
+    db.run("INSERT INTO group_members (group_id, user_id, role) VALUES (?, ?, 'member')", [id, userId], function (err) {
+        if (err) {
+            if (err.message.includes('UNIQUE constraint failed')) {
+                return res.json({ message: "Already a member" });
+            }
+            return res.status(500).json({ error: err.message });
+        }
+        res.json({ message: "Joined group successfully" });
+    });
+});
+
+app.post('/api/groups/:id/leave', (req, res) => {
+    const { id } = req.params;
+    const { userId } = req.body;
+
+    db.run("DELETE FROM group_members WHERE group_id = ? AND user_id = ?", [id, userId], function (err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: "Left group successfully" });
+    });
+});
+
 
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);

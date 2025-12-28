@@ -1,6 +1,6 @@
 import { User } from '../features/auth/types';
 
-const API_URL = 'http://localhost:3000/api';
+export const API_URL = 'http://localhost:3000/api';
 
 export const api = {
     getUser: async (id: string) => {
@@ -171,6 +171,44 @@ export const api = {
     getComments: async (postId: string) => {
         const res = await fetch(`${API_URL}/posts/${postId}/comments`);
         if (!res.ok) throw new Error('Failed to fetch comments');
+        return res.json();
+    },
+
+    // Group Chat
+    getGroupMessages: async (groupId: string) => {
+        const res = await fetch(`${API_URL}/groups/${groupId}/messages`);
+        if (!res.ok) throw new Error('Failed to fetch messages');
+        return res.json();
+    },
+
+    sendGroupMessage: async (groupId: string, userId: string, content: string) => {
+        const res = await fetch(`${API_URL}/groups/${groupId}/messages`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, content })
+        });
+        if (!res.ok) throw new Error('Failed to send message');
+        return res.json();
+    },
+
+    // Group Management
+    joinGroup: async (groupId: string, userId: string) => {
+        const res = await fetch(`${API_URL}/groups/${groupId}/join`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId })
+        });
+        if (!res.ok) throw new Error('Failed to join group');
+        return res.json();
+    },
+
+    leaveGroup: async (groupId: string, userId: string) => {
+        const res = await fetch(`${API_URL}/groups/${groupId}/leave`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId })
+        });
+        if (!res.ok) throw new Error('Failed to leave group');
         return res.json();
     }
 };

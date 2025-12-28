@@ -3,6 +3,7 @@ import { Search, Filter, Plus, Users, Home, GraduationCap, Trophy, Heart } from 
 import { Input } from '../../../components/ui/input';
 import { Button } from '../../../components/ui/button';
 import { useGroupStore } from '../store/useGroupStore';
+import { useAuthStore } from '../../auth/store/useAuthStore';
 import { GroupCard } from '../components/GroupCard';
 import { CreateGroupModal } from '../components/CreateGroupModal';
 import { GroupType } from '../types';
@@ -16,13 +17,14 @@ const groupTypeFilters: { value: GroupType | 'all'; label: string; icon: React.E
 ];
 
 export const GroupListPage = () => {
+    const { user } = useAuthStore();
     const { groups, filters, setFilter, getFilteredGroups, fetchGroups, isLoading } = useGroupStore();
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const filteredGroups = getFilteredGroups();
 
     useEffect(() => {
-        fetchGroups();
-    }, [fetchGroups]);
+        fetchGroups(user?.id);
+    }, [fetchGroups, user?.id]);
 
     if (isLoading) {
         return <div className="flex justify-center py-20">Chargement...</div>;

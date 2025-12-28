@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { Group } from '../types';
+import { api, API_URL } from '../../../lib/api';
 
 interface GroupState {
     groups: Group[];
@@ -10,13 +11,13 @@ interface GroupState {
         type: 'all' | 'friends' | 'class' | 'club' | 'apartment';
         search: string;
     };
-    fetchGroups: () => Promise<void>;
+    fetchGroups: (userId?: string) => Promise<void>;
     fetchGroup: (id: string) => Promise<void>;
     setGroups: (groups: Group[]) => void;
     setActiveGroup: (group: Group | null) => void;
     createGroup: (group: Group) => void;
-    joinGroup: (groupId: string, user: any) => void;
-    leaveGroup: (groupId: string, userId: string) => void;
+    joinGroup: (groupId: string, user: any) => Promise<void>;
+    leaveGroup: (groupId: string, userId: string) => Promise<void>;
     setFilter: (key: string, value: any) => void;
     getFilteredGroups: () => Group[];
 }
@@ -31,17 +32,22 @@ export const useGroupStore = create<GroupState>((set, get) => ({
         search: ''
     },
 
-    fetchGroups: async () => {
+    fetchGroups: async (userId?: string) => {
         set({ isLoading: true, error: null });
         try {
-            const response = await fetch('http://localhost:3000/api/groups');
+            const url = userId
+                ? `${API_URL}/groups?viewerId=${userId}`
+                : `${API_URL}/groups`;
+
+            const response = await fetch(url);
             if (!response.ok) throw new Error('Failed to fetch groups');
             const data = await response.json();
 
-            // Map backend data to frontend model (ensure members array exists if backend doesn't send it)
+            // Map backend data to frontend model
+            // Backend now returns isMember, so we can use it directly
             const mappedGroups = data.groups.map((g: any) => ({
                 ...g,
-                members: g.members || [] // Backend might not send members list in list view
+                members: g.members || []
             }));
 
             set({ groups: mappedGroups, isLoading: false });
@@ -76,38 +82,73 @@ export const useGroupStore = create<GroupState>((set, get) => ({
         });
     },
 
-    joinGroup: (groupId, user) => set((state) => {
-        return {
-            groups: state.groups.map(group => {
-                if (group.id === groupId) {
-                    // Optimistic update
-                    return {
-                        ...group,
-                        members: [...(group.members || []), {
-                            user,
-                            role: 'member',
-                            joinedAt: new Date().toISOString()
-                        }]
-                    };
-                }
-                return group;
-            })
-        };
-    }),
+    joinGroup: async (groupId, user) => {
+        try {
+            await api.joinGroup(groupId, user.id);
+            set((state) => {
+                // Update groups list
+                const updatedGroups = state.groups.map(group => {
+                    if (group.id === groupId) {
+                        return {
+                            ...group,
+                            isMember: true, // Explicitly set to true
+                            members: [...(group.members || []), {
+                                user,
+                                role: 'member',
+                                joinedAt: new Date().toISOString()
+                            }]
+                        };
+                    }
+                    return group;
+                });
 
-    leaveGroup: (groupId, userId) => set((state) => {
-        return {
-            groups: state.groups.map(group => {
-                if (group.id === groupId) {
-                    return {
-                        ...group,
-                        members: (group.members || []).filter(m => m.user.id !== userId)
-                    };
-                }
-                return group;
-            })
-        };
-    }),
+                // Update activeGroup if it matches
+                const updatedActiveGroup = state.activeGroup?.id === groupId
+                    ? {
+                        ...state.activeGroup,
+                        isMember: true, // Explicitly set to true
+                        members: [...(state.activeGroup.members || []), { user, role: 'member', joinedAt: new Date().toISOString() }]
+                    }
+                    : state.activeGroup;
+
+                return { groups: updatedGroups, activeGroup: updatedActiveGroup };
+            });
+        } catch (error) {
+            console.error('Failed to join group:', error);
+        }
+    },
+
+    leaveGroup: async (groupId, userId) => {
+        try {
+            await api.leaveGroup(groupId, userId);
+            set((state) => {
+                // Update groups list
+                const updatedGroups = state.groups.map(group => {
+                    if (group.id === groupId) {
+                        return {
+                            ...group,
+                            isMember: false, // Explicitly set to false
+                            members: (group.members || []).filter(m => m.user.id !== userId)
+                        };
+                    }
+                    return group;
+                });
+
+                // Update activeGroup if it matches
+                const updatedActiveGroup = state.activeGroup?.id === groupId
+                    ? {
+                        ...state.activeGroup,
+                        isMember: false, // Explicitly set to false
+                        members: (state.activeGroup.members || []).filter(m => m.user.id !== userId)
+                    }
+                    : state.activeGroup;
+
+                return { groups: updatedGroups, activeGroup: updatedActiveGroup };
+            });
+        } catch (error) {
+            console.error('Failed to leave group:', error);
+        }
+    },
 
     setFilter: (key, value) => set((state) => ({
         filters: { ...state.filters, [key]: value }
