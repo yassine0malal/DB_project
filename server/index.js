@@ -164,13 +164,34 @@ app.post('/api/posts/:id/like', (req, res) => {
     });
 });
 
+app.post('/api/comments/:id/like', (req, res) => {
+    const { id } = req.params;
+    const { userId } = req.body;
+
+    db.get("SELECT * FROM likes WHERE user_id = ? AND target_id = ? AND target_type = 'comment'", [userId, id], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+
+        if (row) {
+            db.run("DELETE FROM likes WHERE user_id = ? AND target_id = ? AND target_type = 'comment'", [userId, id], (err) => {
+                if (err) return res.status(500).json({ error: err.message });
+                res.json({ liked: false });
+            });
+        } else {
+            db.run("INSERT INTO likes (user_id, target_id, target_type) VALUES (?, ?, 'comment')", [userId, id], (err) => {
+                if (err) return res.status(500).json({ error: err.message });
+                res.json({ liked: true });
+            });
+        }
+    });
+});
+
 // Add Comment
 app.post('/api/posts/:id/comments', (req, res) => {
     const { id } = req.params;
-    const { userId, content } = req.body;
+    const { userId, content, parentCommentId } = req.body;
     const commentId = Math.random().toString(36).substr(2, 9);
 
-    db.run("INSERT INTO comments (id, post_id, author_id, content) VALUES (?, ?, ?, ?)", [commentId, id, userId, content], function (err) {
+    db.run("INSERT INTO comments (id, post_id, author_id, content, parent_comment_id) VALUES (?, ?, ?, ?, ?)", [commentId, id, userId, content, parentCommentId || null], function (err) {
         if (err) return res.status(500).json({ error: err.message });
 
         // Return the full comment object for optimisitc UI updates
@@ -184,8 +205,12 @@ app.post('/api/posts/:id/comments', (req, res) => {
 
             res.json({
                 id: row.id,
+                postId: row.post_id,
                 content: row.content,
                 createdAt: row.created_at,
+                parentCommentId: row.parent_comment_id,
+                likesCount: 0,
+                isLiked: false,
                 author: {
                     id: row.author_id,
                     firstName: row.first_name,
@@ -201,20 +226,30 @@ app.post('/api/posts/:id/comments', (req, res) => {
 // Get Comments
 app.get('/api/posts/:id/comments', (req, res) => {
     const { id } = req.params;
+    const viewerId = req.query.viewerId;
+
     const sql = `
-        SELECT c.*, u.first_name, u.last_name, u.avatar_url, u.role
+        SELECT 
+            c.*, 
+            u.first_name, u.last_name, u.avatar_url, u.role,
+            (SELECT COUNT(*) FROM likes WHERE target_id = c.id AND target_type = 'comment') as likes_count,
+            EXISTS (SELECT 1 FROM likes WHERE target_id = c.id AND target_type = 'comment' AND user_id = ?) as is_liked
         FROM comments c
         JOIN users u ON c.author_id = u.id
         WHERE c.post_id = ?
         ORDER BY c.created_at ASC
     `;
-    db.all(sql, [id], (err, rows) => {
+    db.all(sql, [viewerId || '', id], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
 
         const comments = rows.map(row => ({
             id: row.id,
+            postId: row.post_id,
             content: row.content,
             createdAt: row.created_at,
+            parentCommentId: row.parent_comment_id,
+            likesCount: row.likes_count,
+            isLiked: Boolean(row.is_liked),
             author: {
                 id: row.author_id,
                 firstName: row.first_name,
@@ -583,8 +618,19 @@ app.get('/api/events/:id', (req, res) => {
     `;
 
     db.get(sqlEvent, [id], (err, event) => {
-        if (err) return res.status(500).json({ error: err.message });
-        if (!event) return res.status(404).json({ error: "Event not found" });
+        if (err) {
+             console.error('Database error fetching event:', err);
+             return res.status(500).json({ error: err.message });
+        }
+        if (!event) {
+            console.log(`Event with id ${id} not found in database or JOIN failed`);
+            // Debug: check if event exists without join
+             db.get('SELECT * FROM events WHERE id = ?', [id], (err, row) => {
+                 if (row) console.log('Event exists but JOIN failed. Event data:', row);
+                 if (!row) console.log('Event literally does not exist in events table');
+             });
+            return res.status(404).json({ error: "Event not found" });
+        }
 
         // Get attendees
         const sqlAttendees = `
@@ -931,3 +977,6 @@ app.post('/api/groups/:id/leave', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
 });
+
+// Hack to keep the process alive if it's exiting prematurely
+setInterval(() => {}, 10000);

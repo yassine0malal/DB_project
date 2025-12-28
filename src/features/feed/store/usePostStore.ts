@@ -15,11 +15,13 @@ interface PostState {
     addPost: (post: Omit<Post, 'id' | 'createdAt' | 'likesCount' | 'commentsCount' | 'sharesCount' | 'isLiked'> & { authorId: string, groupId?: string, clubId?: string }) => Promise<void>;
     addComment: (postId: string, content: string) => Promise<void>;
     toggleLike: (postId: string) => Promise<void>;
+    toggleCommentLike: (postId: string, commentId: string) => Promise<void>;
     getFilteredPosts: (userDepartment?: string) => Post[];
-    addReply: (postId: string, commentId: string, reply: Reply) => void;
+    addReply: (postId: string, commentId: string, content: string) => Promise<void>;
     deleteComment: (postId: string, commentId: string) => void;
     sharePost: (postId: string) => void;
     votePoll: (postId: string, optionId: string) => void;
+    fetchComments: (postId: string) => Promise<void>;
 
     // Non-network actions or simple state
     reportContent: (targetId: string, type: 'post' | 'comment', reason: string) => void;
@@ -43,6 +45,72 @@ export const usePostStore = create<PostState>((set, get) => {
             } catch (error) {
                 console.error(error);
                 set({ error: (error as Error).message, isLoading: false });
+            }
+        },
+
+        fetchComments: async (postId) => {
+            try {
+                const viewerId = useAuthStore.getState().user?.id;
+                const { comments: flatComments } = await api.getComments(postId, viewerId);
+
+                // Build comment tree
+                const commentMap: { [key: string]: any } = {};
+                const topLevelComments: any[] = [];
+
+                flatComments.forEach((c: any) => {
+                    commentMap[c.id] = { ...c, replies: [] };
+                });
+
+                flatComments.forEach((c: any) => {
+                    if (c.parentCommentId && commentMap[c.parentCommentId]) {
+                        commentMap[c.parentCommentId].replies.push(commentMap[c.id]);
+                    } else if (!c.parentCommentId) {
+                        topLevelComments.push(commentMap[c.id]);
+                    }
+                });
+
+                set((state) => ({
+                    posts: state.posts.map(p =>
+                        p.id === postId ? { ...p, comments: topLevelComments } : p
+                    )
+                }));
+            } catch (error) {
+                console.error("Error fetching comments:", error);
+            }
+        },
+
+        toggleCommentLike: async (postId, commentId) => {
+            const userId = useAuthStore.getState().user?.id;
+            if (!userId) return;
+
+            // Optimistic Update
+            set((state) => ({
+                posts: state.posts.map(p => {
+                    if (p.id === postId && p.comments) {
+                        return {
+                            ...p,
+                            comments: p.comments.map(c => {
+                                if (c.id === commentId) {
+                                    const isLiked = !c.isLiked;
+                                    return {
+                                        ...c,
+                                        isLiked,
+                                        likesCount: isLiked ? c.likesCount + 1 : c.likesCount - 1
+                                    };
+                                }
+                                return c;
+                            })
+                        };
+                    }
+                    return p;
+                })
+            }));
+
+            try {
+                await api.toggleCommentLike(commentId, userId);
+            } catch (error) {
+                console.error(error);
+                // Rollback?
             }
         },
 
@@ -152,23 +220,31 @@ export const usePostStore = create<PostState>((set, get) => {
             }
         },
 
-        addReply: (postId, commentId, reply) => {
-            console.log('Reply added (local only)', postId, commentId, reply);
-            set((state) => {
-                const newPosts = state.posts.map(p => {
-                    if (p.id === postId && p.comments) {
-                        const newComments = p.comments.map(c => {
-                            if (c.id === commentId) {
-                                return { ...c, replies: [...(c.replies || []), reply] };
-                            }
-                            return c;
-                        });
-                        return { ...p, comments: newComments, commentsCount: p.commentsCount + 1 };
-                    }
-                    return p;
+        addReply: async (postId, commentId, content) => {
+            try {
+                const userId = useAuthStore.getState().user?.id;
+                if (!userId) throw new Error("Not logged in");
+
+                const reply = await api.createComment(postId, userId, content, commentId);
+
+                set((state) => {
+                    const newPosts = state.posts.map(p => {
+                        if (p.id === postId && p.comments) {
+                            const newComments = p.comments.map(c => {
+                                if (c.id === commentId) {
+                                    return { ...c, replies: [...(c.replies || []), reply] };
+                                }
+                                return c;
+                            });
+                            return { ...p, comments: newComments, commentsCount: p.commentsCount + 1 };
+                        }
+                        return p;
+                    });
+                    return { posts: newPosts };
                 });
-                return { posts: newPosts };
-            });
+            } catch (error) {
+                console.error(error);
+            }
         },
 
         deleteComment: (postId, commentId) => set((state) => {

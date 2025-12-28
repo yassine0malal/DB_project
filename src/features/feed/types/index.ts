@@ -6,6 +6,7 @@ export interface Reply {
     author: User;
     createdAt: string;
     likesCount: number;
+    isLiked?: boolean;
 }
 
 export interface Comment {
@@ -14,6 +15,7 @@ export interface Comment {
     author: User;
     createdAt: string;
     likesCount: number;
+    isLiked?: boolean;
     replies?: Reply[];
 }
 

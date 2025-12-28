@@ -27,11 +27,19 @@ export const PostCard = ({ post, className }: PostCardProps) => {
     const [showReportModal, setShowReportModal] = useState(false);
     const [showShareModal, setShowShareModal] = useState(false);
 
-    const { toggleLike, addComment, deletePost, sharePost } = usePostStore();
+    const { toggleLike, addComment, deletePost, sharePost, fetchComments } = usePostStore();
     const { user: currentUser, followUser, unfollowUser } = useAuthStore();
     const { getUserById } = useUserStore();
 
     const author = getUserById(post.author.id) || post.author;
+
+    const handleToggleComments = () => {
+        const nextShow = !showComments;
+        setShowComments(nextShow);
+        if (nextShow) {
+            fetchComments(post.id);
+        }
+    };
 
     const handleAddComment = async () => {
         if (!newComment.trim()) return;
@@ -191,7 +199,7 @@ export const PostCard = ({ post, className }: PostCardProps) => {
                         <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => setShowComments(!showComments)}
+                            onClick={handleToggleComments}
                             className={cn("flex-1 gap-2 rounded-lg transition-all", showComments ? "text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20" : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700")}
                         >
                             <MessageSquare className="h-4 w-4" />

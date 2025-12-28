@@ -88,11 +88,11 @@ export const api = {
         return res.json();
     },
 
-    createComment: async (postId: string, userId: string, content: string) => {
+    createComment: async (postId: string, userId: string, content: string, parentCommentId?: string) => {
         const res = await fetch(`${API_URL}/posts/${postId}/comments`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId, content })
+            body: JSON.stringify({ userId, content, parentCommentId })
         });
         if (!res.ok) throw new Error('Failed to create comment');
         return res.json();
@@ -168,8 +168,19 @@ export const api = {
         return res.json();
     },
 
-    getComments: async (postId: string) => {
-        const res = await fetch(`${API_URL}/posts/${postId}/comments`);
+    toggleCommentLike: async (commentId: string, userId: string) => {
+        const res = await fetch(`${API_URL}/comments/${commentId}/like`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId })
+        });
+        if (!res.ok) throw new Error('Failed to toggle comment like');
+        return res.json();
+    },
+
+    getComments: async (postId: string, viewerId?: string) => {
+        const query = viewerId ? `?viewerId=${viewerId}` : '';
+        const res = await fetch(`${API_URL}/posts/${postId}/comments${query}`);
         if (!res.ok) throw new Error('Failed to fetch comments');
         return res.json();
     },
