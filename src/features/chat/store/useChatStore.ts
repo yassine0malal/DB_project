@@ -6,6 +6,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     conversations: [],
     activeConversationId: null,
     messages: {},
+    contacts: [],
     isLoading: false,
 
     setConversations: (conversations) => set({ conversations }),
@@ -58,6 +59,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
         } catch (error) {
             console.error('Failed to fetch conversations:', error);
             set({ isLoading: false });
+        }
+    },
+
+    fetchContacts: async (userId: string) => {
+        try {
+            const data = await api.getFollowing(userId);
+            set({ contacts: data.following });
+        } catch (error) {
+            console.error('Failed to fetch contacts:', error);
         }
     },
 

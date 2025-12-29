@@ -38,17 +38,88 @@ const groupMap = {
 // 9: Prepa -> class
 // 10: Cinema -> club
 
+
 const refinedGroups = [
-    { id: '1', name: 'BDE Informatique 2024', description: 'Coordination des activités des étudiants en informatique.', type: 'club' },
-    { id: '2', name: 'Recherche IA & Santé', description: "Groupe d'échange entre enseignants et doctorants sur l'IA.", type: 'club' },
-    { id: '3', name: 'Club Robotique - Projet A', description: 'Équipe dédiée à la conception du robot pour la RoboCup.', type: 'club' },
-    { id: '4', name: 'Entraide Master Génie Logiciel', description: 'Partage de ressources et révisions pour le M1.', type: 'class' },
-    { id: '5', name: 'Commission Pédagogique', description: 'Réunion des enseignants pour la révision des programmes.', type: 'club' },
-    { id: '6', name: 'Volontaires Événements', description: "Groupe logistique pour l'organisation des journées portes ouvertes.", type: 'club' },
-    { id: '7', name: "Anciens de l'Université", description: "Réseau d'alumni pour l'insertion professionnelle.", type: 'club' },
-    { id: '8', name: 'Laboratoire de Physique', description: "Discussion sur les expériences en cours au labo de physique.", type: 'class' },
-    { id: '9', name: 'Préparation Concours', description: "Groupe d'étude intensif pour les concours d'ingénieurs.", type: 'class' },
-    { id: '10', name: 'Club Cinéma - Bureau', description: 'Organisation des projections hebdomadaires.', type: 'club' }
+    { 
+        id: '1', 
+        name: 'BDE Informatique 2024', 
+        description: 'Coordination des activités des étudiants en informatique.', 
+        type: 'club',
+        coverUrl: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=1200&h=400',
+        visibility: 'public'
+    },
+    { 
+        id: '2', 
+        name: 'Recherche IA & Santé', 
+        description: "Groupe d'échange entre enseignants et doctorants sur l'IA.", 
+        type: 'club',
+        coverUrl: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&q=80&w=1200&h=400',
+        visibility: 'private'
+    },
+    { 
+        id: '3', 
+        name: 'Club Robotique - Projet A', 
+        description: 'Équipe dédiée à la conception du robot pour la RoboCup.', 
+        type: 'club',
+        coverUrl: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&q=80&w=1200&h=400',
+        visibility: 'public'
+    },
+    { 
+        id: '4', 
+        name: 'Entraide Master Génie Logiciel', 
+        description: 'Partage de ressources et révisions pour le M1.', 
+        type: 'class',
+        coverUrl: 'https://images.unsplash.com/photo-1523580846011-d3a5bc25702b?auto=format&fit=crop&q=80&w=1200&h=400',
+        visibility: 'private'
+    },
+    { 
+        id: '5', 
+        name: 'Commission Pédagogique', 
+        description: 'Réunion des enseignants pour la révision des programmes.', 
+        type: 'club',
+        coverUrl: 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&fit=crop&q=80&w=1200&h=400',
+        visibility: 'private'
+    },
+    { 
+        id: '6', 
+        name: 'Volontaires Événements', 
+        description: "Groupe logistique pour l'organisation des journées portes ouvertes.", 
+        type: 'club',
+        coverUrl: 'https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&q=80&w=1200&h=400',
+        visibility: 'public'
+    },
+    { 
+        id: '7', 
+        name: "Anciens de l'Université", 
+        description: "Réseau d'alumni pour l'insertion professionnelle.", 
+        type: 'club',
+        coverUrl: 'https://images.unsplash.com/photo-1491438590914-bc09fcaaf77a?auto=format&fit=crop&q=80&w=1200&h=400',
+        visibility: 'public'
+    },
+    { 
+        id: '8', 
+        name: 'Laboratoire de Physique', 
+        description: "Discussion sur les expériences en cours au labo de physique.", 
+        type: 'class',
+        coverUrl: 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&q=80&w=1200&h=400',
+        visibility: 'private'
+    },
+    { 
+        id: '9', 
+        name: 'Préparation Concours', 
+        description: "Groupe d'étude intensif pour les concours d'ingénieurs.", 
+        type: 'class',
+        coverUrl: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&q=80&w=1200&h=400',
+        visibility: 'public'
+    },
+    { 
+        id: '10', 
+        name: 'Club Cinéma - Bureau', 
+        description: 'Organisation des projections hebdomadaires.', 
+        type: 'club',
+        coverUrl: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&q=80&w=1200&h=400',
+        visibility: 'public'
+    }
 ];
 
 
@@ -132,15 +203,15 @@ const messages = [
 db.serialize(() => {
     db.run("PRAGMA foreign_keys = OFF"); // Temporarily disable FKs to avoid ordering constraints if any
 
-    const stmtGroup = db.prepare("INSERT OR REPLACE INTO groups (id, name, description, type, created_by, visibility) VALUES (?, ?, ?, ?, ?, 'public')");
+    const stmtGroup = db.prepare("INSERT OR REPLACE INTO groups (id, name, description, type, created_by, cover_url, visibility) VALUES (?, ?, ?, ?, ?, ?, ?)");
     const stmtMember = db.prepare("INSERT OR REPLACE INTO group_members (group_id, user_id, role) VALUES (?, ?, ?)");
     const stmtDiscussion = db.prepare("INSERT OR REPLACE INTO discussions (id, group_id, title, created_by) VALUES (?, ?, 'Général', ?)");
-    const stmtMessage = db.prepare("INSERT INTO messages (id, discussion_id, author_id, content) VALUES (?, ?, ?, ?)");
+    const stmtMessage = db.prepare("INSERT OR IGNORE INTO messages (id, discussion_id, author_id, content) VALUES (?, ?, ?, ?)");
 
     refinedGroups.forEach(group => {
         // Find owner (admin)
         const owner = members.find(m => m.gid === group.id && m.role === 'admin')?.uid || members.find(m => m.gid === group.id)?.uid || '1';
-        stmtGroup.run(group.id, group.name, group.description, group.type, owner);
+        stmtGroup.run(group.id, group.name, group.description, group.type, owner, group.coverUrl, group.visibility);
 
         // Ensure discussion exists (ID = GroupID for simplicity in this mapping)
         stmtDiscussion.run(group.id, group.id, owner);
@@ -150,7 +221,7 @@ db.serialize(() => {
         stmtMember.run(member.gid, member.uid, member.role);
     });
 
-    let msgId = 1;
+    let msgId = 1000; // Start at 1000 to avoid conflicts with existing messages
     messages.forEach(msg => {
         // Use group ID as discussion ID since we mapped them 1:1 above
         stmtMessage.run(msgId.toString(), msg.gid, msg.uid, msg.content);

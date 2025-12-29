@@ -17,6 +17,38 @@ export const api = {
         }));
     },
 
+    getFollowing: async (userId: string) => {
+        const res = await fetch(`${API_URL}/users/${userId}/following`);
+        if (!res.ok) throw new Error('Failed to fetch following');
+        return res.json();
+    },
+
+    getFollowers: async (userId: string) => {
+        const res = await fetch(`${API_URL}/users/${userId}/followers`);
+        if (!res.ok) throw new Error('Failed to fetch followers');
+        return res.json();
+    },
+
+    followUser: async (userId: string, targetId: string) => {
+        const res = await fetch(`${API_URL}/users/${targetId}/follow`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId })
+        });
+        if (!res.ok) throw new Error('Failed to follow user');
+        return res.json();
+    },
+
+    unfollowUser: async (userId: string, targetId: string) => {
+        const res = await fetch(`${API_URL}/users/${targetId}/unfollow`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId })
+        });
+        if (!res.ok) throw new Error('Failed to unfollow user');
+        return res.json();
+    },
+
     getUser: async (id: string) => {
         const res = await fetch(`${API_URL}/users/${id}`);
         if (!res.ok) throw new Error('Failed to fetch user');
@@ -234,6 +266,42 @@ export const api = {
             body: JSON.stringify({ userId })
         });
         if (!res.ok) throw new Error('Failed to leave group');
+        return res.json();
+    },
+
+    requestJoinGroup: async (groupId: string, userId: string, message?: string) => {
+        const res = await fetch(`${API_URL}/groups/${groupId}/request-join`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, message })
+        });
+        if (!res.ok) throw new Error('Failed to request to join group');
+        return res.json();
+    },
+
+    getGroupJoinRequests: async (groupId: string, userId: string) => {
+        const res = await fetch(`${API_URL}/groups/${groupId}/join-requests?userId=${userId}`);
+        if (!res.ok) throw new Error('Failed to fetch join requests');
+        return res.json();
+    },
+
+    approveJoinRequest: async (requestId: string, reviewerId: string) => {
+        const res = await fetch(`${API_URL}/groups/join-requests/${requestId}/approve`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reviewerId })
+        });
+        if (!res.ok) throw new Error('Failed to approve join request');
+        return res.json();
+    },
+
+    rejectJoinRequest: async (requestId: string, reviewerId: string) => {
+        const res = await fetch(`${API_URL}/groups/join-requests/${requestId}/reject`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reviewerId })
+        });
+        if (!res.ok) throw new Error('Failed to reject join request');
         return res.json();
     },
 

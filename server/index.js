@@ -344,6 +344,52 @@ app.get('/api/groups/:id', (req, res) => {
         if (err) return res.status(500).json({ error: err.message });
         if (!group) return res.status(404).json({ error: "Group not found" });
 
+        const isMember = Boolean(group.is_member);
+        const isPrivate = group.visibility === 'private';
+
+        // If group is private and user is not a member, return limited info
+        if (isPrivate && !isMember) {
+            db.get("SELECT id, first_name, last_name, avatar_url FROM users WHERE id = ?", [group.created_by], (err, creator) => {
+                // Get member count
+                db.get("SELECT COUNT(*) as count FROM group_members WHERE group_id = ?", [id], (err, countResult) => {
+                    const memberCount = countResult ? countResult.count : 0;
+
+                    // Check if user has a pending join request
+                    db.get(
+                        "SELECT status FROM group_join_requests WHERE group_id = ? AND user_id = ? ORDER BY created_at DESC LIMIT 1",
+                        [id, viewerId || ''],
+                        (err, joinRequest) => {
+                            res.json({
+                                id: group.id,
+                                name: group.name,
+                                description: group.description,
+                                type: group.type,
+                                visibility: group.visibility,
+                                coverUrl: group.cover_url,
+                                createdAt: group.created_at,
+                                isMember: false,
+                                membersCount: memberCount,
+                                createdBy: creator ? {
+                                    id: creator.id,
+                                    firstName: creator.first_name,
+                                    lastName: creator.last_name,
+                                    avatarUrl: creator.avatar_url
+                                } : { id: 'unknown', firstName: 'Unknown', lastName: '' },
+                                // Limited info - no members list, posts, or messages
+                                members: [],
+                                posts: [],
+                                rules: [],
+                                // Include join request status if exists
+                                joinRequestStatus: joinRequest ? joinRequest.status : null
+                            });
+                        }
+                    );
+                });
+            });
+            return; // Early exit for private groups
+        }
+
+        // Full access for public groups or members of private groups
         // Get members
         db.all(`
             SELECT u.id, u.first_name, u.last_name, u.avatar_url, gm.role, gm.joined_at
@@ -407,9 +453,10 @@ app.get('/api/groups/:id', (req, res) => {
 
                     res.json({
                         ...group,
-                        isMember: Boolean(group.is_member),
+                        isMember,
                         coverUrl: group.cover_url,
                         createdAt: group.created_at,
+                        membersCount: members.length,
                         createdBy: creator ? {
                             id: creator.id,
                             firstName: creator.first_name,
@@ -424,13 +471,153 @@ app.get('/api/groups/:id', (req, res) => {
                         // For now, let's just return what we have.
                         members: formattedMembers,
                         posts: formattedPosts,
-                        rules: [] // Schema doesn't have rules column yet, return empty or mock?
+                        rules: [], // Schema doesn't have rules column yet, return empty or mock?
+                        joinRequestStatus: null // No join request needed for public groups or existing members
                     });
                 });
             });
         });
     });
 });
+
+// Group Join Requests
+app.post('/api/groups/:id/request-join', (req, res) => {
+    const { id } = req.params;
+    const { userId, message } = req.body;
+
+    // Check if group exists and is private
+    db.get("SELECT visibility FROM groups WHERE id = ?", [id], (err, group) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!group) return res.status(404).json({ error: "Group not found" });
+
+        // Check if already a member
+        db.get("SELECT * FROM group_members WHERE group_id = ? AND user_id = ?", [id, userId], (err, member) => {
+            if (member) return res.status(400).json({ error: "Already a member" });
+
+            // Insert or update join request
+            db.run(`
+                INSERT INTO group_join_requests (group_id, user_id, message, status)
+                VALUES (?, ?, ?, 'pending')
+                ON CONFLICT(group_id, user_id) 
+                DO UPDATE SET status = 'pending', created_at = CURRENT_TIMESTAMP, message = ?
+            `, [id, userId, message || '', message || ''], function(err) {
+                if (err) return res.status(500).json({ error: err.message });
+                res.json({ message: "Join request sent", requestId: this.lastID || id });
+            });
+        });
+    });
+});
+
+// Get join requests for a group (admin/moderator only)
+app.get('/api/groups/:id/join-requests', (req, res) => {
+    const { id } = req.params;
+    const { userId } = req.query;
+
+    // Check if user is admin or moderator
+    db.get("SELECT role FROM group_members WHERE group_id = ? AND user_id = ?", [id, userId], (err, member) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!member || (member.role !== 'admin' && member.role !== 'moderator')) {
+            return res.status(403).json({ error: "Not authorized" });
+        }
+
+        // Get pending requests
+        db.all(`
+            SELECT jr.*, u.first_name, u.last_name, u.avatar_url, u.role as user_role
+            FROM group_join_requests jr
+            JOIN users u ON jr.user_id = u.id
+            WHERE jr.group_id = ? AND jr.status = 'pending'
+            ORDER BY jr.created_at DESC
+        `, [id], (err, requests) => {
+            if (err) return res.status(500).json({ error: err.message });
+            
+            const formattedRequests = requests.map(r => ({
+                id: r.id,
+                groupId: r.group_id,
+                user: {
+                    id: r.user_id,
+                    firstName: r.first_name,
+                    lastName: r.last_name,
+                    avatarUrl: r.avatar_url,
+                    role: r.user_role
+                },
+                message: r.message,
+                status: r.status,
+                createdAt: r.created_at
+            }));
+
+            res.json({ requests: formattedRequests });
+        });
+    });
+});
+
+// Approve join request
+app.post('/api/groups/join-requests/:requestId/approve', (req, res) => {
+    const { requestId } = req.params;
+    const { reviewerId } = req.body;
+
+    // Get the join request
+    db.get("SELECT * FROM group_join_requests WHERE id = ?", [requestId], (err, request) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!request) return res.status(404).json({ error: "Join request not found" });
+
+        // Check if reviewer is admin or moderator
+        db.get("SELECT role FROM group_members WHERE group_id = ? AND user_id = ?", [request.group_id, reviewerId], (err, member) => {
+            if (err) return res.status(500).json({ error: err.message });
+            if (!member || (member.role !== 'admin' && member.role !== 'moderator')) {
+                return res.status(403).json({ error: "Not authorized" });
+            }
+
+            // Add user to group
+            db.run("INSERT INTO group_members (group_id, user_id, role) VALUES (?, ?, 'member')", 
+                [request.group_id, request.user_id], 
+                (err) => {
+                    if (err) return res.status(500).json({ error: err.message });
+
+                    // Update request status
+                    db.run(`
+                        UPDATE group_join_requests 
+                        SET status = 'approved', reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP
+                        WHERE id = ?
+                    `, [reviewerId, requestId], (err) => {
+                        if (err) return res.status(500).json({ error: err.message });
+                        res.json({ message: "Join request approved" });
+                    });
+                }
+            );
+        });
+    });
+});
+
+// Reject join request
+app.post('/api/groups/join-requests/:requestId/reject', (req, res) => {
+    const { requestId } = req.params;
+    const { reviewerId } = req.body;
+
+    // Get the join request
+    db.get("SELECT * FROM group_join_requests WHERE id = ?", [requestId], (err, request) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!request) return res.status(404).json({ error: "Join request not found" });
+
+        // Check if reviewer is admin or moderator
+        db.get("SELECT role FROM group_members WHERE group_id = ? AND user_id = ?", [request.group_id, reviewerId], (err, member) => {
+            if (err) return res.status(500).json({ error: err.message });
+            if (!member || (member.role !== 'admin' && member.role !== 'moderator')) {
+                return res.status(403).json({ error: "Not authorized" });
+            }
+
+            // Update request status
+            db.run(`
+                UPDATE group_join_requests 
+                SET status = 'rejected', reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            `, [reviewerId, requestId], (err) => {
+                if (err) return res.status(500).json({ error: err.message });
+                res.json({ message: "Join request rejected" });
+            });
+        });
+    });
+});
+
 app.get('/api/clubs', (req, res) => {
     const viewerId = req.query.viewerId;
     const sql = `

@@ -2,10 +2,11 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { AuthState, User } from '../types';
 import { useUserStore } from '../../profile/store/useUserStore';
+import { api } from '../../../lib/api';
 
 export const useAuthStore = create<AuthState>()(
     persist(
-        (set) => ({
+        (set, get) => ({
             user: null,
             token: null,
             isAuthenticated: false,
@@ -33,31 +34,61 @@ export const useAuthStore = create<AuthState>()(
                 });
             },
 
-            followUser: (targetUserId) => {
-                set((state) => {
-                    if (!state.user) return state;
-                    const following = state.user.following || [];
-                    if (following.includes(targetUserId)) return state;
-                    return {
+            followUser: async (targetUserId) => {
+                const state = get();
+                if (!state.user) return;
+
+                const following = state.user.following || [];
+                if (following.includes(targetUserId)) return;
+
+                // Optimistic update
+                set({
+                    user: {
+                        ...state.user,
+                        following: [...following, targetUserId]
+                    } as User
+                });
+
+                try {
+                    await api.followUser(state.user.id, targetUserId);
+                } catch (error) {
+                    console.error('Failed to follow user:', error);
+                    // Revert
+                    set({
                         user: {
                             ...state.user,
-                            following: [...following, targetUserId]
+                            following
                         } as User
-                    };
-                });
+                    });
+                }
             },
 
-            unfollowUser: (targetUserId) => {
-                set((state) => {
-                    if (!state.user) return state;
-                    const following = state.user.following || [];
-                    return {
+            unfollowUser: async (targetUserId) => {
+                const state = get();
+                if (!state.user) return;
+
+                const following = state.user.following || [];
+                const newFollowing = following.filter(id => id !== targetUserId);
+
+                set({
+                    user: {
+                        ...state.user,
+                        following: newFollowing
+                    } as User
+                });
+
+                try {
+                    await api.unfollowUser(state.user.id, targetUserId);
+                } catch (error) {
+                    console.error('Failed to unfollow user:', error);
+                    // Revert
+                    set({
                         user: {
                             ...state.user,
-                            following: following.filter(id => id !== targetUserId)
+                            following
                         } as User
-                    };
-                });
+                    });
+                }
             },
         }),
         {
