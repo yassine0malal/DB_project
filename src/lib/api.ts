@@ -3,6 +3,20 @@ import { User } from '../features/auth/types';
 export const API_URL = 'http://localhost:3000/api';
 
 export const api = {
+    getUsers: async () => {
+        const res = await fetch(`${API_URL}/users`);
+        if (!res.ok) throw new Error('Failed to fetch users');
+        const data = await res.json();
+        return data.users.map((u: any) => ({
+            id: u.id,
+            email: u.email,
+            firstName: u.first_name,
+            lastName: u.last_name,
+            role: u.role,
+            avatarUrl: u.avatar_url
+        }));
+    },
+
     getUser: async (id: string) => {
         const res = await fetch(`${API_URL}/users/${id}`);
         if (!res.ok) throw new Error('Failed to fetch user');
@@ -220,6 +234,65 @@ export const api = {
             body: JSON.stringify({ userId })
         });
         if (!res.ok) throw new Error('Failed to leave group');
+        return res.json();
+    },
+
+    // Generic Chat/Discussions
+    getDiscussions: async (userId: string) => {
+        const res = await fetch(`${API_URL}/discussions?userId=${userId}`);
+        if (!res.ok) throw new Error('Failed to fetch discussions');
+        return res.json();
+    },
+
+    getDiscussionMessages: async (discussionId: string) => {
+        const res = await fetch(`${API_URL}/discussions/${discussionId}/messages`);
+        if (!res.ok) throw new Error('Failed to fetch messages');
+        return res.json();
+    },
+
+    sendDiscussionMessage: async (discussionId: string, userId: string, content: string) => {
+        const res = await fetch(`${API_URL}/discussions/${discussionId}/messages`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, content })
+        });
+        if (!res.ok) throw new Error('Failed to send message');
+        return res.json();
+    },
+
+    createDiscussion: async (participants: string[], createdBy: string, title?: string, groupId?: string) => {
+        const res = await fetch(`${API_URL}/discussions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ participants, title, createdBy, groupId })
+        });
+        if (!res.ok) throw new Error('Failed to create discussion');
+        return res.json();
+    },
+
+    register: async (data: any) => {
+        const res = await fetch(`${API_URL}/auth/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error || 'Registration failed');
+        }
+        return res.json();
+    },
+
+    login: async (credentials: any) => {
+        const res = await fetch(`${API_URL}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(credentials)
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error || 'Login failed');
+        }
         return res.json();
     }
 };

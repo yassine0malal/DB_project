@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
+import { fr } from 'date-fns/locale';
 import { MoreVertical, Heart, MessageSquare, Share2, Send, Trash2, Flag, UserPlus, UserMinus } from 'lucide-react';
 import { Card, CardContent, CardFooter, CardHeader } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
@@ -131,7 +132,13 @@ export const PostCard = ({ post, className }: PostCardProps) => {
 
                         </div>
                         <p className="text-[9px] text-gray-400 dark:text-gray-500 font-medium">
-                            {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
+                            {(() => {
+                                try {
+                                    return formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: fr });
+                                } catch (e) {
+                                    return 'À l\'instant';
+                                }
+                            })()}
                         </p>
                     </div>
                 </CardHeader>
@@ -255,7 +262,7 @@ export const PostCard = ({ post, className }: PostCardProps) => {
                         </div>
                     )}
                 </CardFooter>
-            </Card>
+            </Card >
 
             <ReportModal
                 isOpen={showReportModal}
@@ -273,4 +280,3 @@ export const PostCard = ({ post, className }: PostCardProps) => {
         </>
     );
 };
-

@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
     ArrowLeft, Users, Lock, Globe, Settings, Share2,
     MessageSquare, Calendar, Info, Home, GraduationCap,
-    Heart, Trophy, Crown, Shield, MoreHorizontal
+    Heart, Trophy, Crown, Shield, MoreHorizontal, FileText, Plus
 } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { useGroupStore } from '../store/useGroupStore';
@@ -11,6 +11,8 @@ import { useAuthStore } from '../../auth/store/useAuthStore';
 import { GroupMemberList } from '../components/GroupMemberList';
 import { GroupChat } from '../components/GroupChat';
 import { GroupType } from '../types';
+import { PostCard } from '../../feed/components/PostCard';
+import { CreatePostModal } from '../../feed/components/CreatePostModal';
 
 const getGroupTypeInfo = (type: GroupType) => {
     switch (type) {
@@ -27,7 +29,7 @@ const getGroupTypeInfo = (type: GroupType) => {
     }
 };
 
-type TabType = 'chat' | 'members' | 'about';
+type TabType = 'chat' | 'publications' | 'members' | 'about';
 
 export const GroupDetailsPage = () => {
     const { id } = useParams<{ id: string }>();
@@ -35,6 +37,7 @@ export const GroupDetailsPage = () => {
     const { user } = useAuthStore();
     const { activeGroup, setActiveGroup, fetchGroup, joinGroup, leaveGroup, isLoading } = useGroupStore();
     const [activeTab, setActiveTab] = useState<TabType>('chat');
+    const [showCreatePost, setShowCreatePost] = useState(false);
 
     useEffect(() => {
         if (id) {
@@ -78,6 +81,7 @@ export const GroupDetailsPage = () => {
 
     const tabs: { key: TabType; label: string; icon: React.ElementType }[] = [
         { key: 'chat', label: 'Discussion', icon: MessageSquare },
+        { key: 'publications', label: 'Publications', icon: FileText },
         { key: 'members', label: 'Membres', icon: Users },
         { key: 'about', label: 'À propos', icon: Info }
     ];
@@ -206,6 +210,52 @@ export const GroupDetailsPage = () => {
                     <GroupChat groupId={activeGroup.id} isMember={!!isMember} />
                 )}
 
+                {/* Publications Tab */}
+                {activeTab === 'publications' && (
+                    <div className="space-y-4">
+                        {/* Create Post Button */}
+                        {isMember && (
+                            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm">
+                                <Button
+                                    onClick={() => setShowCreatePost(true)}
+                                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium flex items-center justify-center gap-2"
+                                >
+                                    <Plus className="h-4 w-4" />
+                                    Créer une publication
+                                </Button>
+                            </div>
+                        )}
+
+                        {/* Posts List */}
+                        {activeGroup.posts && activeGroup.posts.length > 0 ? (
+                            <div className="space-y-4">
+                                {activeGroup.posts.map(post => (
+                                    <PostCard key={post.id} post={post} />
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-12 text-center shadow-sm">
+                                <FileText className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+                                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Aucune publication</h3>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                                    {isMember
+                                        ? "Soyez le premier à publier dans ce groupe !"
+                                        : "Ce groupe n'a pas encore de publications."}
+                                </p>
+                                {isMember && (
+                                    <Button
+                                        onClick={() => setShowCreatePost(true)}
+                                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                                    >
+                                        <Plus className="h-4 w-4 mr-2" />
+                                        Créer une publication
+                                    </Button>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {/* Members Tab */}
                 {activeTab === 'members' && (
                     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-6 shadow-sm">
@@ -322,6 +372,20 @@ export const GroupDetailsPage = () => {
                     </div>
                 )}
             </div>
+
+            {/* Create Post Modal */}
+            <CreatePostModal
+                isOpen={showCreatePost}
+                onClose={() => {
+                    setShowCreatePost(false);
+                    // Refresh group data after creating a post
+                    if (activeGroup) {
+                        fetchGroup(activeGroup.id);
+                    }
+                }}
+                groupId={activeGroup.id}
+                groupName={activeGroup.name}
+            />
         </div>
     );
 };

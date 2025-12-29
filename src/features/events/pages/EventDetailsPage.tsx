@@ -115,6 +115,59 @@ export const EventDetailsPage = () => {
                         </div>
                     </section>
 
+                    {/* Participants */}
+                    <section>
+                        <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                            <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                            Participants ({event.attendees.length})
+                        </h2>
+                        {event.attendees && event.attendees.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {event.attendees.map((attendee: any) => (
+                                    <Link
+                                        key={attendee.id}
+                                        to={`/profile/${attendee.id}`}
+                                        className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700 flex items-center gap-3 hover:shadow-md hover:border-blue-200 dark:hover:border-blue-700 transition-all group"
+                                    >
+                                        <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/30 overflow-hidden shrink-0 ring-2 ring-white dark:ring-gray-800 group-hover:ring-blue-200 dark:group-hover:ring-blue-700 transition-all">
+                                            {attendee.avatarUrl ? (
+                                                <img src={attendee.avatarUrl} alt={attendee.firstName} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-lg">
+                                                    {attendee.firstName?.[0]}{attendee.lastName?.[0]}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <h4 className="font-semibold text-gray-900 dark:text-gray-100 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                                                {attendee.firstName} {attendee.lastName}
+                                            </h4>
+                                            <Badge
+                                                className={cn(
+                                                    "text-xs mt-1",
+                                                    attendee.role === 'teacher' ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400" :
+                                                        attendee.role === 'admin' ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" :
+                                                            "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                                                )}
+                                            >
+                                                {attendee.role === 'teacher' ? 'Enseignant' :
+                                                    attendee.role === 'admin' ? 'Admin' : 'Étudiant'}
+                                            </Badge>
+                                        </div>
+                                    </Link>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-12 text-center border border-gray-100 dark:border-gray-700">
+                                <Users className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+                                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Aucun participant</h3>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                    Soyez le premier à vous inscrire à cet événement !
+                                </p>
+                            </div>
+                        )}
+                    </section>
+
                     {/* Guests */}
                     {event.guests && event.guests.length > 0 && (
                         <section>

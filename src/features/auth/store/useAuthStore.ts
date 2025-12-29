@@ -1,15 +1,14 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { AuthState, User } from '../types';
-import { MOCK_STUDENT } from '../data/mockUsers';
 import { useUserStore } from '../../profile/store/useUserStore';
 
 export const useAuthStore = create<AuthState>()(
     persist(
         (set) => ({
-            user: MOCK_STUDENT, // Default to student
-            token: 'mock-token',
-            isAuthenticated: true,
+            user: null,
+            token: null,
+            isAuthenticated: false,
             isLoading: false,
 
             login: (user, token) => {

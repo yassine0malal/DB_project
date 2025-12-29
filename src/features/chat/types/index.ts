@@ -29,4 +29,10 @@ export interface ChatState {
     setActiveConversation: (conversationId: string | null) => void;
     addMessage: (conversationId: string, message: Message) => void;
     markAsRead: (conversationId: string) => void;
+
+    // Async Actions
+    fetchConversations: (userId: string) => Promise<void>;
+    fetchMessages: (discussionId: string) => Promise<void>;
+    sendMessage: (discussionId: string, userId: string, content: string) => Promise<void>;
+    createDiscussion: (participants: string[], createdBy: string, title?: string) => Promise<string>;
 }

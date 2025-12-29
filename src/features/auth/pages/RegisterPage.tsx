@@ -6,6 +6,7 @@ import { GraduationCap } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import { Card, CardHeader, CardContent, CardTitle, CardDescription, CardFooter } from '../../../components/ui/card';
+import { api } from '../../../lib/api';
 
 const registerSchema = z.object({
     firstName: z.string().min(2, 'Prénom trop court'),
@@ -23,14 +24,23 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 export const RegisterPage = () => {
     const navigate = useNavigate();
 
-    const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<RegisterFormValues>({
+    const { register, handleSubmit, setError, formState: { errors, isSubmitting } } = useForm<RegisterFormValues>({
         resolver: zodResolver(registerSchema),
     });
 
     const onSubmit = async (data: RegisterFormValues) => {
-        console.log('Register data:', data);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        navigate('/login');
+        try {
+            await api.register(data);
+            alert("Compte créé ! Vous pouvez maintenant vous connecter.");
+            navigate('/login');
+        } catch (error: any) {
+            console.error(error);
+            setError('root', {
+                type: 'manual',
+                message: error.message || "Une erreur est survenue lors de l'inscription"
+            });
+            alert(error.message || "Impossible de créer le compte");
+        }
     };
 
     return (

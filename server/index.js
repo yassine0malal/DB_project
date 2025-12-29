@@ -8,6 +8,49 @@ const PORT = 3000;
 app.use(cors());
 app.use(express.json());
 
+// Auth
+app.post('/api/auth/register', (req, res) => {
+    const { email, password, firstName, lastName } = req.body;
+
+    if (!email || !password || !firstName || !lastName) {
+        return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    // Check if user exists
+    db.get("SELECT id FROM users WHERE email = ?", [email], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (row) return res.status(400).json({ error: "Email already exists" });
+
+        const id = Math.random().toString(36).substr(2, 9);
+        const createdAt = new Date().toISOString();
+        const role = 'student'; // Default role
+
+        db.serialize(() => {
+            // Insert User
+            db.run("INSERT INTO users (id, email, password, first_name, last_name, role, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                [id, email, password, firstName, lastName, role, createdAt],
+                function (err) {
+                    if (err) return res.status(500).json({ error: err.message });
+
+                    // Insert Student Profile (Default)
+                    const studentId = 'STU' + Math.floor(Math.random() * 10000);
+                    db.run("INSERT INTO students (user_id, student_id, major, level, academic_year) VALUES (?, ?, ?, ?, ?)",
+                        [id, studentId, 'Informatique', 'L1', '2024-2025'],
+                        function (err) {
+                            if (err) return res.status(500).json({ error: err.message });
+                            
+                            res.json({
+                                message: "User registered successfully",
+                                user: { id, email, firstName, lastName, role }
+                            });
+                        }
+                    );
+                }
+            );
+        });
+    });
+});
+
 // Users
 app.get('/api/users', (req, res) => {
     db.all("SELECT * FROM users", [], (err, rows) => {
@@ -123,7 +166,7 @@ app.get('/api/posts', (req, res) => {
             content: post.content,
             type: post.type,
             imageUrl: post.image_url,
-            createdAt: post.created_at,
+            createdAt: post.created_at ? post.created_at.replace(' ', 'T') + 'Z' : new Date().toISOString(),
             likesCount: post.likes_count,
             commentsCount: post.comments_count,
             isLiked: Boolean(post.is_liked),
@@ -207,7 +250,7 @@ app.post('/api/posts/:id/comments', (req, res) => {
                 id: row.id,
                 postId: row.post_id,
                 content: row.content,
-                createdAt: row.created_at,
+                createdAt: row.created_at ? row.created_at.replace(' ', 'T') + 'Z' : new Date().toISOString(),
                 parentCommentId: row.parent_comment_id,
                 likesCount: 0,
                 isLiked: false,
@@ -246,7 +289,7 @@ app.get('/api/posts/:id/comments', (req, res) => {
             id: row.id,
             postId: row.post_id,
             content: row.content,
-            createdAt: row.created_at,
+            createdAt: row.created_at ? row.created_at.replace(' ', 'T') + 'Z' : new Date().toISOString(),
             parentCommentId: row.parent_comment_id,
             likesCount: row.likes_count,
             isLiked: Boolean(row.is_liked),
@@ -332,7 +375,7 @@ app.get('/api/groups/:id', (req, res) => {
                     content: post.content,
                     type: post.type,
                     imageUrl: post.image_url,
-                    createdAt: post.created_at,
+                    createdAt: post.created_at ? post.created_at.replace(' ', 'T') + 'Z' : new Date().toISOString(),
                     likesCount: post.likes_count,
                     commentsCount: post.comments_count,
                     isLiked: Boolean(post.is_liked),
@@ -590,7 +633,7 @@ app.get('/api/events', (req, res) => {
             clubId: row.club_id,
             title: row.title,
             description: row.description,
-            date: row.start_time, // Map start_time to date
+            date: row.start_time ? row.start_time.replace(' ', 'T') + 'Z' : new Date().toISOString(), // Map start_time to date
             location: row.location,
             status: row.status,
             clubName: row.club_name,
@@ -658,8 +701,8 @@ app.get('/api/events/:id', (req, res) => {
                 title: event.title,
                 description: event.description,
                 fullDescription: event.full_description,
-                date: event.start_time,
-                endDate: event.end_time,
+                date: event.start_time ? event.start_time.replace(' ', 'T') + 'Z' : new Date().toISOString(),
+                endDate: event.end_time ? event.end_time.replace(' ', 'T') + 'Z' : undefined,
                 location: event.location,
                 isOnline: Boolean(event.is_online),
                 meetingUrl: event.meeting_url,
@@ -947,6 +990,153 @@ app.post('/api/groups/:id/messages', (req, res) => {
     });
 });
 
+// Generic Discussions API
+app.get('/api/discussions', (req, res) => {
+    const userId = req.query.userId;
+    if (!userId) return res.status(400).json({ error: "userId is required" });
+
+    // Get all discussions the user is part of
+    const sql = `
+        SELECT d.*, m.content as last_content, m.created_at as last_at, m.author_id as last_author_id
+        FROM discussions d
+        JOIN discussion_participants dp ON d.id = dp.discussion_id
+        LEFT JOIN (
+            SELECT discussion_id, content, created_at, author_id,
+                   ROW_NUMBER() OVER (PARTITION BY discussion_id ORDER BY created_at DESC) as rn
+            FROM messages
+        ) m ON d.id = m.discussion_id AND m.rn = 1
+        WHERE dp.user_id = ?
+        ORDER BY COALESCE(m.created_at, d.created_at) DESC
+    `;
+
+    db.all(sql, [userId], (err, discussions) => {
+        if (err) return res.status(500).json({ error: err.message });
+
+        // For each discussion, get participants
+        const fetchParticipants = discussions.map(disc => {
+            return new Promise((resolve, reject) => {
+                const pSql = `
+                    SELECT u.id, u.first_name, u.last_name, u.avatar_url, u.role
+                    FROM discussion_participants dp
+                    JOIN users u ON dp.user_id = u.id
+                    WHERE dp.discussion_id = ?
+                `;
+                db.all(pSql, [disc.id], (err, participants) => {
+                    if (err) reject(err);
+                    else {
+                        resolve({
+                            id: disc.id,
+                            groupId: disc.group_id,
+                            title: disc.title,
+                            createdAt: disc.created_at,
+                            participants: participants.map(p => ({
+                                id: p.id,
+                                firstName: p.first_name,
+                                lastName: p.last_name,
+                                avatarUrl: p.avatar_url,
+                                role: p.role
+                            })),
+                            lastMessage: disc.last_author_id ? {
+                                content: disc.last_content,
+                                createdAt: disc.last_at,
+                                authorId: disc.last_author_id
+                            } : null,
+                            unreadCount: 0, // Simplified for now
+                            updatedAt: disc.last_at || disc.created_at
+                        });
+                    }
+                });
+            });
+        });
+
+        Promise.all(fetchParticipants)
+            .then(results => res.json({ conversations: results }))
+            .catch(err => res.status(500).json({ error: err.message }));
+    });
+});
+
+app.get('/api/discussions/:id/messages', (req, res) => {
+    const { id } = req.params;
+    const sql = `
+        SELECT m.*, 
+               u.id as author_id, u.first_name, u.last_name, u.avatar_url, u.role as author_role
+        FROM messages m
+        JOIN users u ON m.author_id = u.id
+        WHERE m.discussion_id = ?
+        ORDER BY m.created_at ASC
+    `;
+
+    db.all(sql, [id], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+
+        const messages = rows.map(row => ({
+            id: row.id,
+            discussionId: row.discussion_id,
+            content: row.content,
+            createdAt: row.created_at,
+            author: {
+                id: row.author_id,
+                firstName: row.first_name,
+                lastName: row.last_name,
+                avatarUrl: row.avatar_url,
+                role: row.author_role
+            }
+        }));
+
+        res.json({ messages });
+    });
+});
+
+app.post('/api/discussions/:id/messages', (req, res) => {
+    const { id } = req.params;
+    const { content, userId } = req.body;
+
+    const sql = `INSERT INTO messages (discussion_id, author_id, content) VALUES (?, ?, ?)`;
+    db.run(sql, [id, userId, content], function (err) {
+        if (err) return res.status(500).json({ error: err.message });
+
+        const messageId = this.lastID;
+        db.get("SELECT * FROM users WHERE id = ?", [userId], (err, user) => {
+            res.json({
+                id: messageId,
+                discussionId: id,
+                content,
+                createdAt: new Date().toISOString(),
+                author: {
+                    id: user.id,
+                    firstName: user.first_name,
+                    lastName: user.last_name,
+                    avatarUrl: user.avatar_url,
+                    role: user.role
+                }
+            });
+        });
+    });
+});
+
+app.post('/api/discussions', (req, res) => {
+    const { participants, title, createdBy, groupId } = req.body;
+    const id = Math.random().toString(36).substr(2, 9);
+    const createdAt = new Date().toISOString();
+
+    db.serialize(() => {
+        db.run("INSERT INTO discussions (id, group_id, title, created_by, created_at) VALUES (?, ?, ?, ?, ?)",
+            [id, groupId || null, title || null, createdBy, createdAt],
+            function (err) {
+                if (err) return res.status(500).json({ error: err.message });
+
+                const insertParticipant = db.prepare("INSERT INTO discussion_participants (discussion_id, user_id) VALUES (?, ?)");
+                participants.forEach(pId => {
+                    insertParticipant.run(id, pId);
+                });
+                insertParticipant.finalize();
+
+                res.json({ id, title, createdAt });
+            }
+        );
+    });
+});
+
 // Group Join/Leave
 app.post('/api/groups/:id/join', (req, res) => {
     const { id } = req.params;
@@ -973,6 +1163,36 @@ app.post('/api/groups/:id/leave', (req, res) => {
     });
 });
 
+
+// Auth Login
+app.post('/api/auth/login', (req, res) => {
+    const { email, password } = req.body;
+    
+    // Simple query to find user by email
+    // Per user request: Password check is skipped/lax for now
+    db.get("SELECT * FROM users WHERE email = ?", [email], (err, user) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!user) return res.status(401).json({ error: "Utilisateur non trouvé" });
+
+        // In a real app, verify password here:
+        // const valid = await bcrypt.compare(password, user.password_hash);
+        // if (!valid) return res.status(401).json({ error: "Mot de passe incorrect" });
+
+        // Return user info and a fake token
+        res.json({
+            user: {
+                id: user.id,
+                email: user.email,
+                firstName: user.first_name,
+                lastName: user.last_name,
+                role: user.role,
+                avatarUrl: user.avatar_url,
+                bio: user.bio
+            },
+            token: 'mock-jwt-token-' + Date.now()
+        });
+    });
+});
 
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);

@@ -1,9 +1,7 @@
 import { useEffect } from 'react';
 import { useChatStore } from '../store/useChatStore';
-import { mockConversations, mockMessages } from '../data/mockChat';
 import { ChatList } from '../components/ChatList';
 import { ChatWindow } from '../components/ChatWindow';
-import { Message } from '../types';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 
 export const MessagesPage = () => {
@@ -11,40 +9,30 @@ export const MessagesPage = () => {
         conversations,
         activeConversationId,
         messages,
-        setConversations,
+        fetchConversations,
+        fetchMessages,
+        sendMessage,
         setActiveConversation,
-        addMessage,
         markAsRead
     } = useChatStore();
 
     const { user } = useAuthStore();
 
     useEffect(() => {
-        // Load mock data
-        if (conversations.length === 0) {
-            setConversations(mockConversations);
-            // Pre-load messages for the mock conversation
-            mockConversations.forEach(conv => {
-                if (!messages[conv.id]) {
-                    mockMessages.forEach(msg => addMessage(conv.id, msg));
-                }
-            });
+        if (user) {
+            fetchConversations(user.id);
         }
-    }, []);
+    }, [user, fetchConversations]);
 
-    const handleSendMessage = (content: string) => {
+    useEffect(() => {
+        if (activeConversationId) {
+            fetchMessages(activeConversationId);
+        }
+    }, [activeConversationId, fetchMessages]);
+
+    const handleSendMessage = async (content: string) => {
         if (!activeConversationId || !user) return;
-
-        const newMessage: Message = {
-            id: Date.now().toString(),
-            senderId: user.id,
-            content,
-            timestamp: new Date().toISOString(),
-            isRead: true,
-            type: 'text'
-        };
-
-        addMessage(activeConversationId, newMessage);
+        await sendMessage(activeConversationId, user.id, content);
     };
 
     const handleSelectConversation = (id: string) => {

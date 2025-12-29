@@ -11,11 +11,13 @@ import { cn } from '../../../utils/cn';
 interface CreatePostModalProps {
     isOpen: boolean;
     onClose: () => void;
+    groupId?: string;
+    groupName?: string;
 }
 
 type Tab = 'post' | 'poll';
 
-export const CreatePostModal = ({ isOpen, onClose }: CreatePostModalProps) => {
+export const CreatePostModal = ({ isOpen, onClose, groupId, groupName }: CreatePostModalProps) => {
     const { addPost } = usePostStore();
     const { user } = useAuthStore();
     const [activeTab, setActiveTab] = useState<Tab>('post');
@@ -69,7 +71,8 @@ export const CreatePostModal = ({ isOpen, onClose }: CreatePostModalProps) => {
                     totalVotes: 0
                 },
                 author: user,
-                authorId: user.id
+                authorId: user.id,
+                groupId
             });
         } else {
             if (!content.trim()) return;
@@ -79,7 +82,8 @@ export const CreatePostModal = ({ isOpen, onClose }: CreatePostModalProps) => {
                 content,
                 imageUrl: imageUrl || undefined,
                 author: user,
-                authorId: user.id
+                authorId: user.id,
+                groupId
             });
         }
 
@@ -99,7 +103,9 @@ export const CreatePostModal = ({ isOpen, onClose }: CreatePostModalProps) => {
         <Dialog open={isOpen} onOpenChange={(val) => !val && onClose()}>
             <DialogContent className="max-w-xl">
                 <DialogHeader>
-                    <DialogTitle>Créer une publication</DialogTitle>
+                    <DialogTitle>
+                        {groupName ? `Publier dans ${groupName}` : 'Créer une publication'}
+                    </DialogTitle>
                 </DialogHeader>
 
                 <div className="p-6">
