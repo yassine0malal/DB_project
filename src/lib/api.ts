@@ -3,6 +3,74 @@ import { User } from '../features/auth/types';
 export const API_URL = 'http://localhost:3000/api';
 
 export const api = {
+    getUsers: async () => {
+        const res = await fetch(`${API_URL}/users`);
+        if (!res.ok) throw new Error('Failed to fetch users');
+        const data = await res.json();
+        return data.users.map((u: any) => ({
+            id: u.id,
+            email: u.email,
+            firstName: u.first_name,
+            lastName: u.last_name,
+            role: u.role,
+            avatarUrl: u.avatar_url
+        }));
+    },
+
+    getFollowing: async (userId: string) => {
+        const res = await fetch(`${API_URL}/users/${userId}/following`);
+        if (!res.ok) throw new Error('Failed to fetch following');
+        return res.json();
+    },
+
+    getContacts: async (userId: string) => {
+        const res = await fetch(`${API_URL}/contacts?userId=${userId}`);
+        if (!res.ok) throw new Error('Failed to fetch contacts');
+        return res.json();
+    },
+
+    addContact: async (userId: string, contactId: string) => {
+        const res = await fetch(`${API_URL}/contacts`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, contactId })
+        });
+        if (!res.ok) throw new Error('Failed to add contact');
+        return res.json();
+    },
+
+    startDirectDiscussion: async (userId1: string, userId2: string) => {
+        const res = await fetch(`${API_URL}/discussions/start?userId1=${userId1}&userId2=${userId2}`);
+        if (!res.ok) throw new Error('Failed to start discussion');
+        return res.json();
+    },
+
+    getFollowers: async (userId: string) => {
+        const res = await fetch(`${API_URL}/users/${userId}/followers`);
+        if (!res.ok) throw new Error('Failed to fetch followers');
+        return res.json();
+    },
+
+    followUser: async (userId: string, targetId: string) => {
+        const res = await fetch(`${API_URL}/users/${targetId}/follow`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId })
+        });
+        if (!res.ok) throw new Error('Failed to follow user');
+        return res.json();
+    },
+
+    unfollowUser: async (userId: string, targetId: string) => {
+        const res = await fetch(`${API_URL}/users/${targetId}/unfollow`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId })
+        });
+        if (!res.ok) throw new Error('Failed to unfollow user');
+        return res.json();
+    },
+
     getUser: async (id: string) => {
         const res = await fetch(`${API_URL}/users/${id}`);
         if (!res.ok) throw new Error('Failed to fetch user');
@@ -88,11 +156,11 @@ export const api = {
         return res.json();
     },
 
-    createComment: async (postId: string, userId: string, content: string) => {
+    createComment: async (postId: string, userId: string, content: string, parentCommentId?: string) => {
         const res = await fetch(`${API_URL}/posts/${postId}/comments`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId, content })
+            body: JSON.stringify({ userId, content, parentCommentId })
         });
         if (!res.ok) throw new Error('Failed to create comment');
         return res.json();
@@ -168,8 +236,19 @@ export const api = {
         return res.json();
     },
 
-    getComments: async (postId: string) => {
-        const res = await fetch(`${API_URL}/posts/${postId}/comments`);
+    toggleCommentLike: async (commentId: string, userId: string) => {
+        const res = await fetch(`${API_URL}/comments/${commentId}/like`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId })
+        });
+        if (!res.ok) throw new Error('Failed to toggle comment like');
+        return res.json();
+    },
+
+    getComments: async (postId: string, viewerId?: string) => {
+        const query = viewerId ? `?viewerId=${viewerId}` : '';
+        const res = await fetch(`${API_URL}/posts/${postId}/comments${query}`);
         if (!res.ok) throw new Error('Failed to fetch comments');
         return res.json();
     },
@@ -209,6 +288,101 @@ export const api = {
             body: JSON.stringify({ userId })
         });
         if (!res.ok) throw new Error('Failed to leave group');
+        return res.json();
+    },
+
+    requestJoinGroup: async (groupId: string, userId: string, message?: string) => {
+        const res = await fetch(`${API_URL}/groups/${groupId}/request-join`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, message })
+        });
+        if (!res.ok) throw new Error('Failed to request to join group');
+        return res.json();
+    },
+
+    getGroupJoinRequests: async (groupId: string, userId: string) => {
+        const res = await fetch(`${API_URL}/groups/${groupId}/join-requests?userId=${userId}`);
+        if (!res.ok) throw new Error('Failed to fetch join requests');
+        return res.json();
+    },
+
+    approveJoinRequest: async (requestId: string, reviewerId: string) => {
+        const res = await fetch(`${API_URL}/groups/join-requests/${requestId}/approve`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reviewerId })
+        });
+        if (!res.ok) throw new Error('Failed to approve join request');
+        return res.json();
+    },
+
+    rejectJoinRequest: async (requestId: string, reviewerId: string) => {
+        const res = await fetch(`${API_URL}/groups/join-requests/${requestId}/reject`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reviewerId })
+        });
+        if (!res.ok) throw new Error('Failed to reject join request');
+        return res.json();
+    },
+
+    // Generic Chat/Discussions
+    getDiscussions: async (userId: string) => {
+        const res = await fetch(`${API_URL}/discussions?userId=${userId}`);
+        if (!res.ok) throw new Error('Failed to fetch discussions');
+        return res.json();
+    },
+
+    getDiscussionMessages: async (discussionId: string) => {
+        const res = await fetch(`${API_URL}/discussions/${discussionId}/messages`);
+        if (!res.ok) throw new Error('Failed to fetch messages');
+        return res.json();
+    },
+
+    sendDiscussionMessage: async (discussionId: string, userId: string, content: string) => {
+        const res = await fetch(`${API_URL}/discussions/${discussionId}/messages`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, content })
+        });
+        if (!res.ok) throw new Error('Failed to send message');
+        return res.json();
+    },
+
+    createDiscussion: async (participants: string[], createdBy: string, title?: string, groupId?: string) => {
+        const res = await fetch(`${API_URL}/discussions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ participants, title, createdBy, groupId })
+        });
+        if (!res.ok) throw new Error('Failed to create discussion');
+        return res.json();
+    },
+
+    register: async (data: any) => {
+        const res = await fetch(`${API_URL}/auth/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error || 'Registration failed');
+        }
+        return res.json();
+    },
+
+    login: async (credentials: any) => {
+        const res = await fetch(`${API_URL}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(credentials)
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error || 'Login failed');
+        }
         return res.json();
     }
 };

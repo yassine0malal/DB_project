@@ -16,36 +16,26 @@ interface CommentItemProps {
     isReply?: boolean;
 }
 
+
 export const CommentItem = ({ comment, postId, isReply = false }: CommentItemProps) => {
-    const [isLiked, setIsLiked] = useState(false);
-    const [likes, setLikes] = useState(comment.likesCount);
     const [isReplying, setIsReplying] = useState(false);
     const [replyContent, setReplyContent] = useState("");
     const [showReportModal, setShowReportModal] = useState(false);
 
-    const { addReply, deleteComment } = usePostStore();
+    const { addReply, deleteComment, toggleCommentLike } = usePostStore();
     const { user } = useAuthStore();
 
     const isAuthor = user?.id === comment.author.id;
     const isAdmin = user?.role === 'admin';
 
     const handleLike = () => {
-        setIsLiked(!isLiked);
-        setLikes(prev => isLiked ? prev - 1 : prev + 1);
+        toggleCommentLike(postId, comment.id);
     };
 
-    const handleReply = () => {
+    const handleReply = async () => {
         if (!replyContent.trim() || !user) return;
 
-        const newReply: Reply = {
-            id: Date.now().toString(),
-            content: replyContent,
-            author: user,
-            createdAt: new Date().toISOString(),
-            likesCount: 0
-        };
-
-        addReply(postId, comment.id, newReply);
+        await addReply(postId, comment.id, replyContent);
         setReplyContent("");
         setIsReplying(false);
     };
@@ -100,9 +90,9 @@ export const CommentItem = ({ comment, postId, isReply = false }: CommentItemPro
                         </span>
                         <button
                             onClick={handleLike}
-                            className={cn("text-[10px] font-bold hover:underline transition-colors", isLiked ? "text-blue-600 dark:text-blue-400" : "text-gray-500 dark:text-gray-400")}
+                            className={cn("text-[10px] font-bold hover:underline transition-colors", comment.isLiked ? "text-blue-600 dark:text-blue-400" : "text-gray-500 dark:text-gray-400")}
                         >
-                            J'aime {likes > 0 && `(${likes})`}
+                            J'aime {comment.likesCount > 0 && `(${comment.likesCount})`}
                         </button>
                         {!isReply && (
                             <button

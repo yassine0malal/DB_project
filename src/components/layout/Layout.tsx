@@ -4,16 +4,23 @@ import { Button } from '../ui/button';
 import { Home, Users, UsersRound, LogOut, LayoutDashboard, Calendar, Bell, MessageSquare, Settings } from 'lucide-react';
 import { useNotificationStore } from '../../features/notifications/store/useNotificationStore';
 import { useChatStore } from '../../features/chat/store/useChatStore';
+import { useUserStore } from '../../features/profile/store/useUserStore';
 import { cn } from '../../utils/cn';
+import { useEffect } from 'react';
 
 export const Layout = () => {
     const { logout, user } = useAuthStore();
     const { getUnreadCount } = useNotificationStore();
     const { conversations } = useChatStore();
+    const { fetchUsers } = useUserStore();
     const unreadCount = getUnreadCount();
     const totalUnreadMessages = conversations.reduce((acc, conv) => acc + conv.unreadCount, 0);
     const navigate = useNavigate();
     const location = useLocation();
+
+    useEffect(() => {
+        fetchUsers();
+    }, [fetchUsers]);
 
     const handleLogout = () => {
         logout();

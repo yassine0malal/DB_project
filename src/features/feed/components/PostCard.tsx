@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
+import { fr } from 'date-fns/locale';
 import { MoreVertical, Heart, MessageSquare, Share2, Send, Trash2, Flag, UserPlus, UserMinus } from 'lucide-react';
 import { Card, CardContent, CardFooter, CardHeader } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
@@ -27,11 +28,19 @@ export const PostCard = ({ post, className }: PostCardProps) => {
     const [showReportModal, setShowReportModal] = useState(false);
     const [showShareModal, setShowShareModal] = useState(false);
 
-    const { toggleLike, addComment, deletePost, sharePost } = usePostStore();
+    const { toggleLike, addComment, deletePost, sharePost, fetchComments } = usePostStore();
     const { user: currentUser, followUser, unfollowUser } = useAuthStore();
     const { getUserById } = useUserStore();
 
     const author = getUserById(post.author.id) || post.author;
+
+    const handleToggleComments = () => {
+        const nextShow = !showComments;
+        setShowComments(nextShow);
+        if (nextShow) {
+            fetchComments(post.id);
+        }
+    };
 
     const handleAddComment = async () => {
         if (!newComment.trim()) return;
@@ -123,7 +132,13 @@ export const PostCard = ({ post, className }: PostCardProps) => {
 
                         </div>
                         <p className="text-[9px] text-gray-400 dark:text-gray-500 font-medium">
-                            {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
+                            {(() => {
+                                try {
+                                    return formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: fr });
+                                } catch (e) {
+                                    return 'À l\'instant';
+                                }
+                            })()}
                         </p>
                     </div>
                 </CardHeader>
@@ -191,7 +206,7 @@ export const PostCard = ({ post, className }: PostCardProps) => {
                         <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => setShowComments(!showComments)}
+                            onClick={handleToggleComments}
                             className={cn("flex-1 gap-2 rounded-lg transition-all", showComments ? "text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20" : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700")}
                         >
                             <MessageSquare className="h-4 w-4" />
@@ -247,7 +262,7 @@ export const PostCard = ({ post, className }: PostCardProps) => {
                         </div>
                     )}
                 </CardFooter>
-            </Card>
+            </Card >
 
             <ReportModal
                 isOpen={showReportModal}
@@ -265,4 +280,3 @@ export const PostCard = ({ post, className }: PostCardProps) => {
         </>
     );
 };
-
