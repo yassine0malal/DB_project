@@ -23,6 +23,28 @@ export const api = {
         return res.json();
     },
 
+    getContacts: async (userId: string) => {
+        const res = await fetch(`${API_URL}/contacts?userId=${userId}`);
+        if (!res.ok) throw new Error('Failed to fetch contacts');
+        return res.json();
+    },
+
+    addContact: async (userId: string, contactId: string) => {
+        const res = await fetch(`${API_URL}/contacts`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, contactId })
+        });
+        if (!res.ok) throw new Error('Failed to add contact');
+        return res.json();
+    },
+
+    startDirectDiscussion: async (userId1: string, userId2: string) => {
+        const res = await fetch(`${API_URL}/discussions/start?userId1=${userId1}&userId2=${userId2}`);
+        if (!res.ok) throw new Error('Failed to start discussion');
+        return res.json();
+    },
+
     getFollowers: async (userId: string) => {
         const res = await fetch(`${API_URL}/users/${userId}/followers`);
         if (!res.ok) throw new Error('Failed to fetch followers');

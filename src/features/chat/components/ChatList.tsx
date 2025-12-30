@@ -16,7 +16,7 @@ interface ChatListProps {
 
 export const ChatList = ({ conversations, activeConversationId, onConversationSelect }: ChatListProps) => {
     const { user: currentUser } = useAuthStore();
-    const { createDiscussion } = useChatStore();
+    const { startChat } = useChatStore();
     const [isSearching, setIsSearching] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [users, setUsers] = useState<any[]>([]);
@@ -44,22 +44,11 @@ export const ChatList = ({ conversations, activeConversationId, onConversationSe
     const handleStartChat = async (userId: string) => {
         if (!currentUser) return;
 
-        // Check if conversation already exists
-        const existing = conversations.find(c =>
-            c.participants.length === 2 &&
-            c.participants.some(p => p.id === userId)
-        );
-
-        if (existing) {
-            onConversationSelect(existing.id);
-        } else {
-            try {
-                const newId = await createDiscussion([currentUser.id, userId], currentUser.id);
-                onConversationSelect(newId);
-            } catch (error) {
-                console.error('Failed to start chat:', error);
-            }
+        const discussionId = await startChat(currentUser.id, userId);
+        if (discussionId) {
+            onConversationSelect(discussionId);
         }
+
         setIsSearching(false);
         setSearchQuery('');
     };

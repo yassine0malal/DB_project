@@ -1195,7 +1195,7 @@ app.get('/api/discussions', (req, res) => {
             FROM messages
         ) m ON d.id = m.discussion_id AND m.rn = 1
         WHERE dp.user_id = ?
-        ORDER BY COALESCE(m.created_at, d.created_at) DESC
+        ORDER BY d.last_message_at DESC, d.created_at DESC
     `;
 
     db.all(sql, [userId], (err, discussions) => {
@@ -1285,6 +1285,10 @@ app.post('/api/discussions/:id/messages', (req, res) => {
         if (err) return res.status(500).json({ error: err.message });
 
         const messageId = this.lastID;
+
+        // Update last_message_at in discussions
+        db.run("UPDATE discussions SET last_message_at = CURRENT_TIMESTAMP WHERE id = ?", [id]);
+
         db.get("SELECT * FROM users WHERE id = ?", [userId], (err, user) => {
             res.json({
                 id: messageId,
@@ -1323,6 +1327,94 @@ app.post('/api/discussions', (req, res) => {
                 res.json({ id, title, createdAt });
             }
         );
+    });
+});
+
+// ---------------------------------------------
+// Contacts API
+// ---------------------------------------------
+
+app.get('/api/contacts', (req, res) => {
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ error: "userId is required" });
+
+    const sql = `
+        SELECT u.id, u.first_name, u.last_name, u.avatar_url, u.role, c.status
+        FROM contacts c
+        JOIN users u ON c.contact_id = u.id
+        WHERE c.user_id = ?
+        ORDER BY u.first_name ASC
+    `;
+
+    db.all(sql, [userId], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ contacts: rows.map(r => ({
+            id: r.id,
+            firstName: r.first_name,
+            lastName: r.last_name,
+            avatarUrl: r.avatar_url,
+            role: r.role,
+            status: r.status
+        })) });
+    });
+});
+
+app.post('/api/contacts', (req, res) => {
+    const { userId, contactId } = req.body;
+    if (!userId || !contactId) return res.status(400).json({ error: "userId and contactId are required" });
+
+    db.run("INSERT OR IGNORE INTO contacts (user_id, contact_id, status) VALUES (?, ?, 'accepted')", [userId, contactId], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        
+        // Also add the reverse link so both see each other as contacts
+        db.run("INSERT OR IGNORE INTO contacts (user_id, contact_id, status) VALUES (?, ?, 'accepted')", [contactId, userId], (err) => {
+             res.json({ message: "Contact added successfully" });
+        });
+    });
+});
+
+// Start or Get Direct Discussion
+app.get('/api/discussions/start', (req, res) => {
+    const { userId1, userId2 } = req.query;
+    if (!userId1 || !userId2) return res.status(400).json({ error: "userId1 and userId2 are required" });
+
+    // Check if a direct discussion already exists between these two
+    const sqlCheck = `
+        SELECT dp1.discussion_id
+        FROM discussion_participants dp1
+        JOIN discussion_participants dp2 ON dp1.discussion_id = dp2.discussion_id
+        JOIN discussions d ON d.id = dp1.discussion_id
+        WHERE dp1.user_id = ? AND dp2.user_id = ? AND d.group_id IS NULL
+        LIMIT 1
+    `;
+
+    db.get(sqlCheck, [userId1, userId2], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+
+        if (row) {
+            // Discussion exists, return it
+            res.json({ id: row.discussion_id });
+        } else {
+            // Create new discussion
+            const id = Math.random().toString(36).substr(2, 9);
+            const createdAt = new Date().toISOString();
+
+            db.serialize(() => {
+                db.run("INSERT INTO discussions (id, created_by, created_at, last_message_at) VALUES (?, ?, ?, ?)",
+                    [id, userId1, createdAt, createdAt],
+                    function(err) {
+                        if (err) return res.status(500).json({ error: err.message });
+
+                        const stmt = db.prepare("INSERT INTO discussion_participants (discussion_id, user_id) VALUES (?, ?)");
+                        stmt.run(id, userId1);
+                        stmt.run(id, userId2);
+                        stmt.finalize();
+
+                        res.json({ id, isNew: true });
+                    }
+                );
+            });
+        }
     });
 });
 

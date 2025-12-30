@@ -37,4 +37,5 @@ export interface ChatState {
     fetchMessages: (discussionId: string) => Promise<void>;
     sendMessage: (discussionId: string, userId: string, content: string) => Promise<void>;
     createDiscussion: (participants: string[], createdBy: string, title?: string) => Promise<string>;
+    startChat: (userId: string, targetId: string) => Promise<string | undefined>;
 }

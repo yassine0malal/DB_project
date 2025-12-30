@@ -6,19 +6,17 @@ import { useAuthStore } from '../../auth/store/useAuthStore';
 import { User } from '../../auth/types';
 
 export const MessagesPage = () => {
-    const {
-        conversations,
-        activeConversationId,
-        messages,
-        contacts,
-        fetchConversations,
-        fetchContacts,
-        fetchMessages,
-        sendMessage,
-        createDiscussion,
-        setActiveConversation,
-        markAsRead
-    } = useChatStore();
+    const conversations = useChatStore(state => state.conversations);
+    const activeConversationId = useChatStore(state => state.activeConversationId);
+    const messages = useChatStore(state => state.messages);
+    const contacts = useChatStore(state => state.contacts);
+    const fetchConversations = useChatStore(state => state.fetchConversations);
+    const fetchContacts = useChatStore(state => state.fetchContacts);
+    const fetchMessages = useChatStore(state => state.fetchMessages);
+    const sendMessage = useChatStore(state => state.sendMessage);
+    const startChat = useChatStore(state => state.startChat);
+    const setActiveConversation = useChatStore(state => state.setActiveConversation);
+    const markAsRead = useChatStore(state => state.markAsRead);
 
     const [activeTab, setActiveTab] = useState<'chats' | 'contacts'>('chats');
 
@@ -37,6 +35,20 @@ export const MessagesPage = () => {
         }
     }, [activeConversationId, fetchMessages]);
 
+    // Polling for dynamic updates
+    useEffect(() => {
+        if (!user) return;
+
+        const interval = setInterval(() => {
+            fetchConversations(user.id);
+            if (activeConversationId) {
+                fetchMessages(activeConversationId);
+            }
+        }, 5000); // 5 seconds interval for balance between dynamic feel and server load
+
+        return () => clearInterval(interval);
+    }, [user, activeConversationId, fetchConversations, fetchMessages]);
+
     const handleSendMessage = async (content: string) => {
         if (!activeConversationId || !user) return;
         await sendMessage(activeConversationId, user.id, content);
@@ -50,21 +62,19 @@ export const MessagesPage = () => {
     const handleContactSelect = async (contact: User) => {
         if (!user) return;
 
-        // Find existing conversation
-        // Assuming 1-on-1 conversation has 2 participants and includes the contact
-        const existing = conversations.find(c =>
-            c.participants.length === 2 &&
-            c.participants.some(p => p.id === contact.id)
-        );
-
-        if (existing) {
-            setActiveConversation(existing.id);
-        } else {
-            const pIds = [user.id, contact.id];
-            const newId = await createDiscussion(pIds, user.id);
-            setActiveConversation(newId);
-        }
+        // Switch tab immediately for responsiveness
         setActiveTab('chats');
+
+        try {
+            const discussionId = await startChat(user.id, contact.id);
+            if (discussionId) {
+                // Ensure the conversation is marked as read and active
+                setActiveConversation(discussionId);
+                markAsRead(discussionId);
+            }
+        } catch (error) {
+            console.error('Failed to start chat from contact:', error);
+        }
     };
 
     const activeConversation = conversations.find(c => c.id === activeConversationId);

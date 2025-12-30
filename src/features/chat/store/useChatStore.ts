@@ -64,8 +64,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     fetchContacts: async (userId: string) => {
         try {
-            const data = await api.getFollowing(userId);
-            set({ contacts: data.following });
+            const data = await api.getContacts(userId);
+            set({ contacts: data.contacts });
         } catch (error) {
             console.error('Failed to fetch contacts:', error);
         }
@@ -123,6 +123,19 @@ export const useChatStore = create<ChatState>((set, get) => ({
         } catch (error) {
             console.error('Failed to create discussion:', error);
             throw error;
+        }
+    },
+
+    startChat: async (userId: string, targetId: string) => {
+        try {
+            const data = await api.startDirectDiscussion(userId, targetId);
+            const discussionId = data.id;
+            // Refetch conversations to ensure it's in the list
+            await get().fetchConversations(userId);
+            set({ activeConversationId: discussionId });
+            return discussionId;
+        } catch (error) {
+            console.error('Failed to start chat:', error);
         }
     }
 }));
