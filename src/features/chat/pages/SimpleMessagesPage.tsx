@@ -31,23 +31,11 @@ export const SimpleMessagesPage = () => {
     const [loading, setLoading] = useState(false);
 
     // Load contacts
-    const [error, setError] = useState<string | null>(null);
-
-    // Load contacts (followed + discussion participants)
     useEffect(() => {
         if (user) {
-            setError(null);
-            fetch(`${API_URL}/contacts/${user.id}`)
-                .then(async (res) => {
-                    if (res.status === 404) throw new Error('ROUTES NOT FOUND: Restart Server');
-                    if (!res.ok) throw new Error('Failed to load contacts');
-                    return res.json();
-                })
-                .then(data => setContacts(data.contacts || []))
-                .catch(err => {
-                    console.error('Error loading contacts:', err);
-                    setError(err.message);
-                });
+            api.getFollowing(user.id)
+                .then(data => setContacts(data.following || []))
+                .catch(err => console.error('Error loading contacts:', err));
         }
     }, [user]);
 
@@ -108,30 +96,7 @@ export const SimpleMessagesPage = () => {
                 </div>
 
                 <div className="flex-1 overflow-y-auto">
-                    {error ? (
-                        <div className="p-4 bg-red-50 text-red-700 m-2 rounded-lg border border-red-200 text-xs">
-                            <p className="font-bold">⚠️ Le serveur n'est pas à jour</p>
-                            <p className="mb-2">Le nouveau code n'est pas chargé. Redémarrez le serveur pour voir tous les contacts.</p>
-                            <div className="p-2 bg-white rounded border border-red-100 font-mono mb-2">
-                                1. Ctrl+C (stop)<br />
-                                2. node server/index.js
-                            </div>
-                            <button
-                                onClick={() => {
-                                    // Fallback: charger uniquement les abonnements via l'ancienne API
-                                    api.getFollowing(user?.id || '')
-                                        .then(data => {
-                                            setContacts(data.following || []);
-                                            setError(null);
-                                        })
-                                        .catch(e => alert("Même l'ancienne API échoue"));
-                                }}
-                                className="w-full py-1 px-2 bg-red-100 hover:bg-red-200 text-red-800 rounded transition-colors text-center font-semibold"
-                            >
-                                Voir juste mes amis (Mode dégradé)
-                            </button>
-                        </div>
-                    ) : contacts.length === 0 ? (
+                    {contacts.length === 0 ? (
                         <div className="p-8 text-center">
                             <p className="text-sm text-gray-500 dark:text-gray-400">
                                 Aucun contact trouvé.

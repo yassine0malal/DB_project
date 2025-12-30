@@ -156,45 +156,6 @@ app.post('/api/simple-chat/messages/send', (req, res) => {
         }
     });
 });
-
-// Récupérer la liste des contacts (suivis + ceux avec qui on a une discussion)
-app.get('/api/simple-chat/contacts/:userId', (req, res) => {
-    const { userId } = req.params;
-    console.log(`\n>>> GET contacts pour ${userId}`);
-
-    const sql = `
-        SELECT DISTINCT id, first_name, last_name, avatar_url, role
-        FROM (
-            -- Utilisateurs suivis
-            SELECT u.id, u.first_name, u.last_name, u.avatar_url, u.role
-            FROM users u
-            JOIN user_follows uf ON uf.following_id = u.id
-            WHERE uf.follower_id = ?
-
-            UNION
-
-            -- Utilisateurs avec qui on a une discussion (même non suivis)
-            SELECT u.id, u.first_name, u.last_name, u.avatar_url, u.role
-            FROM users u
-            JOIN discussion_participants dp_other ON dp_other.user_id = u.id
-            JOIN discussion_participants dp_me ON dp_me.discussion_id = dp_other.discussion_id
-            JOIN discussions d ON d.id = dp_me.discussion_id
-            WHERE dp_me.user_id = ? 
-            AND u.id != ? 
-            AND d.group_id IS NULL
-        )
-        ORDER BY first_name ASC
-    `;
-
-    db.all(sql, [userId, userId, userId], (err, rows) => {
-        if (err) {
-            console.error('Error fetching contacts:', err);
-            return res.status(500).json({ error: err.message });
-        }
-        console.log(`Found ${rows ? rows.length : 0} contacts`);
-        res.json({ contacts: rows || [] });
-    });
-});
 // ===== END SIMPLE CHAT ROUTES =====
 
 app.post('/api/auth/register', (req, res) => {
