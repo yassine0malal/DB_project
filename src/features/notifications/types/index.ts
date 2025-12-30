@@ -30,10 +30,11 @@ export interface NotificationState {
     searchQuery: string;
 
     // Actions
+    fetchNotifications: (userId: string) => Promise<void>;
     setFilter: (filter: NotificationFilter) => void;
     setSearchQuery: (query: string) => void;
     markAsRead: (id: string) => void;
-    markAllAsRead: () => void;
+    markAllAsRead: (userId: string) => void;
     deleteNotification: (id: string) => void;
 
     // Selectors

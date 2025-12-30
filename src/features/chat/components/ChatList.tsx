@@ -23,10 +23,10 @@ export const ChatList = ({ conversations, activeConversationId, onConversationSe
     const [filteredUsers, setFilteredUsers] = useState<any[]>([]);
 
     useEffect(() => {
-        if (isSearching) {
-            api.getUsers().then(setUsers).catch(console.error);
+        if (isSearching && currentUser) {
+            api.getFollowing(currentUser.id).then((data) => setUsers(data.following || [])).catch(console.error);
         }
-    }, [isSearching]);
+    }, [isSearching, currentUser]);
 
     useEffect(() => {
         if (searchQuery.trim()) {
@@ -74,7 +74,7 @@ export const ChatList = ({ conversations, activeConversationId, onConversationSe
                         </div>
                         <input
                             type="text"
-                            placeholder="Rechercher un membre..."
+                            placeholder="Rechercher un ami..."
                             className="block w-full pl-10 pr-3 py-2 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500 transition-all"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}

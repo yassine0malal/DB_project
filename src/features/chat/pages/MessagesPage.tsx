@@ -1,6 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useChatStore } from '../store/useChatStore';
-import { ChatList } from '../components/ChatList';
 import { ChatWindow } from '../components/ChatWindow';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { User } from '../../auth/types';
@@ -18,13 +17,12 @@ export const MessagesPage = () => {
     const setActiveConversation = useChatStore(state => state.setActiveConversation);
     const markAsRead = useChatStore(state => state.markAsRead);
 
-    const [activeTab, setActiveTab] = useState<'chats' | 'contacts'>('chats');
-
     const { user } = useAuthStore();
 
     useEffect(() => {
         if (user) {
             fetchConversations(user.id);
+            // Ensure we fetch contacts
             fetchContacts(user.id);
         }
     }, [user, fetchConversations, fetchContacts]);
@@ -44,7 +42,7 @@ export const MessagesPage = () => {
             if (activeConversationId) {
                 fetchMessages(activeConversationId);
             }
-        }, 5000); // 5 seconds interval for balance between dynamic feel and server load
+        }, 5000);
 
         return () => clearInterval(interval);
     }, [user, activeConversationId, fetchConversations, fetchMessages]);
@@ -54,16 +52,8 @@ export const MessagesPage = () => {
         await sendMessage(activeConversationId, user.id, content);
     };
 
-    const handleSelectConversation = (id: string) => {
-        setActiveConversation(id);
-        markAsRead(id);
-    };
-
     const handleContactSelect = async (contact: User) => {
         if (!user) return;
-
-        // Switch tab immediately for responsiveness
-        setActiveTab('chats');
 
         try {
             const discussionId = await startChat(user.id, contact.id);
@@ -81,80 +71,80 @@ export const MessagesPage = () => {
 
     return (
         <div className="h-[calc(100vh-100px)] flex bg-white dark:bg-gray-900 rounded-2xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-800">
-            <div className="w-80 flex-shrink-0 bg-white dark:bg-gray-900 border-r dark:border-gray-800">
-                <div className="flex border-b border-gray-100 dark:border-gray-800 p-2 space-x-2">
-                    <button
-                        onClick={() => setActiveTab('chats')}
-                        className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${activeTab === 'chats'
-                            ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400'
-                            : 'text-gray-500 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'
-                            }`}
-                    >
-                        Discussions
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('contacts')}
-                        className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${activeTab === 'contacts'
-                            ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400'
-                            : 'text-gray-500 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'
-                            }`}
-                    >
-                        Contacts
-                    </button>
+            <div className="flex flex-col h-full border-r border-gray-100 dark:border-gray-800">
+                <div className="p-4 border-b border-gray-100 dark:border-gray-800">
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">Messages</h2>
+                    <div className="relative">
+                        <input
+                            type="text"
+                            placeholder="Rechercher un contact..."
+                            className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500 transition-all"
+                        />
+                        <svg className="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
                 </div>
 
-                {activeTab === 'chats' ? (
-                    <ChatList
-                        conversations={conversations}
-                        activeConversationId={activeConversationId}
-                        onConversationSelect={handleSelectConversation}
-                    />
-                ) : (
-                    <div className="overflow-y-auto h-[calc(100vh-160px)]">
-                        {contacts.length === 0 ? (
-                            <div className="p-4 text-center">
-                                <p className="text-sm text-gray-500 dark:text-gray-400">
-                                    Aucun contact trouvé.
-                                </p>
-                                <p className="text-xs text-gray-400 mt-1">
-                                    Suivez des utilisateurs pour pouvoir discuter avec eux.
-                                </p>
-                            </div>
-                        ) : (
-                            <div className="divide-y divide-gray-100 dark:divide-gray-800">
-                                {contacts.map(contact => (
+                <div className="flex-1 overflow-y-auto">
+                    {contacts.length === 0 ? (
+                        <div className="p-8 text-center">
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                                Aucun contact trouvé.
+                            </p>
+                            <p className="text-xs text-gray-400 mt-1">
+                                Suivez des utilisateurs pour les voir ici.
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="divide-y divide-gray-50 dark:divide-gray-800">
+                            {contacts.map(contact => {
+                                // Find existing conversation with this contact
+                                const conv = conversations.find(c =>
+                                    c.participants.some(p => p.id === contact.id)
+                                );
+                                const isActive = activeConversationId === conv?.id;
+
+                                return (
                                     <div
                                         key={contact.id}
                                         onClick={() => handleContactSelect(contact)}
-                                        className="flex items-center p-4 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
+                                        className={`flex items-center p-4 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors ${isActive ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                                            }`}
                                     >
                                         <div className="relative">
                                             <img
                                                 src={contact.avatarUrl || `https://ui-avatars.com/api/?name=${contact.firstName}+${contact.lastName}&background=random`}
                                                 alt={`${contact.firstName} ${contact.lastName}`}
-                                                className="w-10 h-10 rounded-full object-cover"
+                                                className="w-12 h-12 rounded-full object-cover"
                                             />
-                                            <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white dark:border-gray-900 rounded-full"></div>
+                                            {conv?.unreadCount && conv.unreadCount > 0 ? (
+                                                <div className="absolute -top-1 -right-1 h-5 w-5 bg-blue-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
+                                                    {conv.unreadCount}
+                                                </div>
+                                            ) : null}
                                         </div>
                                         <div className="ml-3 flex-1 min-w-0">
-                                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                                                {contact.firstName} {contact.lastName}
+                                            <div className="flex justify-between items-baseline">
+                                                <p className={`text-sm font-semibold truncate ${isActive ? 'text-blue-700 dark:text-blue-400' : 'text-gray-900 dark:text-gray-100'}`}>
+                                                    {contact.firstName} {contact.lastName}
+                                                </p>
+                                                {conv?.lastMessage && (
+                                                    <span className="text-[10px] text-gray-400">
+                                                        {new Date(conv.lastMessage.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                                                {conv?.lastMessage ? conv.lastMessage.content : "Commencer la discussion"}
                                             </p>
-                                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                                {contact.role}
-                                            </p>
-                                        </div>
-                                        <div className="ml-2">
-                                            <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                            </svg>
                                         </div>
                                     </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                )}
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
             </div>
             <div className="flex-1 border-l">
                 {activeConversation ? (
@@ -171,7 +161,7 @@ export const MessagesPage = () => {
                             </svg>
                         </div>
                         <div className="text-center">
-                            <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-1">Sélectionnez une conversation</h3>
+                            <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-1">Sélectionnez une conversation.</h3>
                             <p className="text-sm max-w-[250px]">
                                 Choisissez une conversation dans la liste pour commencer à discuter.
                             </p>

@@ -1,6 +1,6 @@
 import { useParams, Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { useClubStore } from '../../clubs/store/useClubStore';
+import { useEventStore } from '../../events/store/useEventStore';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { Button } from '../../../components/ui/button';
 import { Badge } from '../../../components/ui/badge';
@@ -11,7 +11,7 @@ import { cn } from '../../../utils/cn';
 
 export const EventDetailsPage = () => {
     const { id } = useParams<{ id: string }>();
-    const { toggleParticipation } = useClubStore();
+    const { joinEvent, leaveEvent } = useEventStore();
     const { user } = useAuthStore();
     const [showShareModal, setShowShareModal] = useState(false);
 
@@ -21,23 +21,23 @@ export const EventDetailsPage = () => {
     const [error, setError] = useState<string | null>(null);
     const [imgError, setImgError] = useState(false);
 
+    const fetchEvent = async () => {
+        if (!id) return;
+        setIsLoading(true);
+        try {
+            const viewerIdParam = user ? `?viewerId=${user.id}` : '';
+            const response = await fetch(`http://localhost:3000/api/events/${id}${viewerIdParam}`);
+            if (!response.ok) throw new Error('Failed to fetch event');
+            const data = await response.json();
+            setEvent(data);
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchEvent = async () => {
-            if (!id) return;
-            setIsLoading(true);
-            try {
-                const viewerIdParam = user ? `?viewerId=${user.id}` : '';
-                const response = await fetch(`http://localhost:3000/api/events/${id}${viewerIdParam}`);
-                if (!response.ok) throw new Error('Failed to fetch event');
-                const data = await response.json();
-                setEvent(data);
-            } catch (err: any) {
-                setError(err.message);
-            } finally {
-                setIsLoading(false);
-            }
-        };
         fetchEvent();
     }, [id, user]);
 
@@ -47,7 +47,48 @@ export const EventDetailsPage = () => {
     const isParticipating = event.isAttending; // Use backend flag
     const isUpcoming = event.date ? new Date(event.date.replace(' ', 'T')) > new Date() : false;
 
+    const handleParticipate = async () => {
+        if (!user || !event) return;
 
+        const previouslyParticipating = isParticipating;
+
+        // Optimistic update for local state
+        setEvent((prev: any) => ({
+            ...prev,
+            isAttending: !previouslyParticipating,
+            attendeesCount: (prev.attendeesCount || 0) + (previouslyParticipating ? -1 : 1),
+            // We also need to update the attendees list for the UI
+            attendees: previouslyParticipating
+                ? (prev.attendees || []).filter((a: any) => a.id !== user.id)
+                : [...(prev.attendees || []), {
+                    id: user.id,
+                    firstName: user.firstName,
+                    lastName: user.lastName,
+                    avatarUrl: user.avatarUrl,
+                    role: user.role
+                }]
+        }));
+
+        try {
+            if (previouslyParticipating) {
+                await leaveEvent(event.id, user.id);
+            } else {
+                await joinEvent(event.id, user.id);
+            }
+            // Optional: refetch to be sure
+            // fetchEvent(); 
+        } catch (err) {
+            // Revert on error
+            setEvent((prev: any) => ({
+                ...prev,
+                isAttending: previouslyParticipating,
+                attendeesCount: (prev.attendeesCount || 0) + (previouslyParticipating ? 1 : -1),
+                attendees: previouslyParticipating
+                    ? [...(prev.attendees || []), { id: user.id, firstName: user.firstName, lastName: user.lastName, avatarUrl: user.avatarUrl, role: user.role }]
+                    : (prev.attendees || []).filter((a: any) => a.id !== user.id)
+            }));
+        }
+    };
 
     return (
         <div className="max-w-5xl mx-auto pb-20 space-y-6">
@@ -119,7 +160,7 @@ export const EventDetailsPage = () => {
                     <section>
                         <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100 flex items-center gap-2">
                             <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                            Participants ({event.attendees.length})
+                            Participants ({event.attendees?.length || 0})
                         </h2>
                         {event.attendees && event.attendees.length > 0 ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -248,7 +289,7 @@ export const EventDetailsPage = () => {
                                             ? "bg-green-500 hover:bg-green-600 text-white shadow-green-100"
                                             : "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200"
                                     )}
-                                    onClick={() => user && toggleParticipation(event.id, user)}
+                                    onClick={handleParticipate}
                                 >
                                     {isParticipating && <Check className="h-5 w-5 mr-2" />}
                                     {isParticipating ? 'Je suis inscrit' : 'Je participe'}
@@ -260,7 +301,7 @@ export const EventDetailsPage = () => {
                             <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
                                 <span className="flex items-center gap-2">
                                     <Users className="h-4 w-4" />
-                                    {event.attendees.length} participants
+                                    {event.attendees?.length || 0} participants
                                 </span>
                                 <Button
                                     variant="ghost"

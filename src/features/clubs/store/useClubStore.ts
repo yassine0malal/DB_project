@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { ClubState, ClubMember, Club } from '../types';
 import { User } from '../../auth/types';
 import { api } from '../../../lib/api';
+import { useEventStore } from '../../events/store/useEventStore';
 
 interface ClubStore extends ClubState {
     setClubs: (clubs: Club[]) => void;
@@ -119,9 +120,38 @@ export const useClubStore = create<ClubStore>((set, get) => {
             console.log("Add event local", clubId, event);
         },
 
-        toggleParticipation: (eventId, user) => {
-            // Placeholder - moved to EventStore ideally
-            console.log("Toggle participation local", eventId, user);
+        toggleParticipation: async (eventId, user) => {
+            const { joinEvent, leaveEvent, events } = useEventStore.getState();
+            const event = events.find(e => e.id === eventId);
+            const isAttending = event?.isAttending;
+
+            if (isAttending) {
+                await leaveEvent(eventId, user.id);
+            } else {
+                await joinEvent(eventId, user.id);
+            }
+
+            // Sync local club events if they exist
+            set((state) => {
+                const updateEvent = (e: any) => e.id === eventId
+                    ? { ...e, isAttending: !isAttending, attendeesCount: (e.attendeesCount || 0) + (isAttending ? -1 : 1) }
+                    : e;
+
+                const updatedClubs = state.clubs.map(club => ({
+                    ...club,
+                    events: (club.events || []).map(updateEvent)
+                }));
+
+                let active = state.activeClub;
+                if (active && (active.id === event?.clubId || active.events?.some((e: any) => e.id === eventId))) {
+                    active = {
+                        ...active,
+                        events: (active.events || []).map(updateEvent)
+                    };
+                }
+
+                return { clubs: updatedClubs, activeClub: active };
+            });
         },
 
         setFilter: (key, value) => set((state) => ({

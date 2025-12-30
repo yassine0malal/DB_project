@@ -8,7 +8,145 @@ const PORT = 3000;
 app.use(cors());
 app.use(express.json());
 
-// Auth
+// ===== SIMPLE CHAT ROUTES =====
+// Get messages between two users
+app.get('/api/simple-chat/messages/:userId1/:userId2', (req, res) => {
+    console.log('HIT: Get messages between', req.params.userId1, req.params.userId2);
+    const { userId1, userId2 } = req.params;
+    
+    const sql = `
+        SELECT m.id, m.content, m.created_at, m.author_id, 
+               u.first_name, u.last_name, u.avatar_url
+        FROM messages m
+        JOIN discussions d ON m.discussion_id = d.id
+        JOIN discussion_participants p1 ON p1.discussion_id = d.id AND p1.user_id = ?
+        JOIN discussion_participants p2 ON p2.discussion_id = d.id AND p2.user_id = ?
+        JOIN users u ON m.author_id = u.id
+        WHERE d.group_id IS NULL
+        ORDER BY m.created_at ASC
+    `;
+    
+    db.all(sql, [userId1, userId2], (err, rows) => {
+        if (err) {
+            console.error('Error fetching messages:', err);
+            return res.status(500).json({ error: err.message });
+        }
+        console.log('Found', rows ? rows.length : 0, 'messages');
+        res.json({ messages: rows || [] });
+    });
+});
+
+// Send a message
+app.post('/api/simple-chat/messages/send', (req, res) => {
+    console.log('HIT: Send message', req.body);
+    const { userId1, userId2, content, senderId } = req.body;
+    
+    if (!userId1 || !userId2 || !content || !senderId) {
+        return res.status(400).json({ error: 'Missing parameters' });
+    }
+    
+    // Helper function to insert message
+    const insertMessage = (discussionId, authorId, content, res) => {
+        const messageId = Math.random().toString(36).substr(2, 9);
+        const createdAt = new Date().toISOString();
+        
+        db.run(
+            "INSERT INTO messages (id, discussion_id, author_id, content, created_at) VALUES (?, ?, ?, ?, ?)",
+            [messageId, discussionId, authorId, content, createdAt],
+            function(err) {
+                if (err) {
+                    console.error('Error inserting message:', err);
+                    return res.status(500).json({ error: err.message });
+                }
+                
+                // Update discussion last_message_at
+                db.run(
+                    "UPDATE discussions SET last_message_at = ? WHERE id = ?",
+                    [createdAt, discussionId],
+                    function(err) {
+                        if (err) console.error('Error updating discussion:', err);
+                    }
+                );
+                
+                console.log('Message inserted successfully');
+                res.json({
+                    success: true,
+                    message: {
+                        id: messageId,
+                        content,
+                        created_at: createdAt,
+                        author_id: authorId
+                    }
+                });
+            }
+        );
+    };
+    
+    // Find or create discussion
+    const findSql = `
+        SELECT dp1.discussion_id
+        FROM discussion_participants dp1
+        JOIN discussion_participants dp2 ON dp1.discussion_id = dp2.discussion_id
+        JOIN discussions d ON d.id = dp1.discussion_id
+        WHERE dp1.user_id = ? AND dp2.user_id = ? AND d.group_id IS NULL
+        LIMIT 1
+    `;
+    
+    db.get(findSql, [userId1, userId2], (err, row) => {
+        if (err) {
+            console.error('Error finding discussion:', err);
+            return res.status(500).json({ error: err.message });
+        }
+        
+        if (row) {
+            console.log('Discussion found:', row.discussion_id);
+            insertMessage(row.discussion_id, senderId, content, res);
+        } else {
+            console.log('Creating new discussion');
+            const discussionId = Math.random().toString(36).substr(2, 9);
+            const createdAt = new Date().toISOString();
+            
+            db.run(
+                "INSERT INTO discussions (id, created_by, created_at, last_message_at) VALUES (?, ?, ?, ?)",
+                [discussionId, senderId, createdAt, createdAt],
+                function(err) {
+                    if (err) {
+                        console.error('Error creating discussion:', err);
+                        return res.status(500).json({ error: err.message });
+                    }
+                    
+                    // Add both participants
+                    db.run(
+                        "INSERT INTO discussion_participants (discussion_id, user_id) VALUES (?, ?)",
+                        [discussionId, userId1],
+                        function(err) {
+                            if (err) {
+                                console.error('Error adding participant 1:', err);
+                                return res.status(500).json({ error: err.message });
+                            }
+                            
+                            db.run(
+                                "INSERT INTO discussion_participants (discussion_id, user_id) VALUES (?, ?)",
+                                [discussionId, userId2],
+                                function(err) {
+                                    if (err) {
+                                        console.error('Error adding participant 2:', err);
+                                        return res.status(500).json({ error: err.message });
+                                    }
+                                    
+                                    console.log('Discussion created successfully');
+                                    insertMessage(discussionId, senderId, content, res);
+                                }
+                            );
+                        }
+                    );
+                }
+            );
+        }
+    });
+});
+// ===== END SIMPLE CHAT ROUTES =====
+
 app.post('/api/auth/register', (req, res) => {
     const { email, password, firstName, lastName } = req.body;
 
@@ -1185,15 +1323,14 @@ app.get('/api/discussions', (req, res) => {
     if (!userId) return res.status(400).json({ error: "userId is required" });
 
     // Get all discussions the user is part of
+    // Get all discussions the user is part of
     const sql = `
-        SELECT d.*, m.content as last_content, m.created_at as last_at, m.author_id as last_author_id
+        SELECT d.*, 
+               (SELECT content FROM messages WHERE discussion_id = d.id ORDER BY created_at DESC LIMIT 1) as last_content,
+               (SELECT created_at FROM messages WHERE discussion_id = d.id ORDER BY created_at DESC LIMIT 1) as last_at,
+               (SELECT author_id FROM messages WHERE discussion_id = d.id ORDER BY created_at DESC LIMIT 1) as last_author_id
         FROM discussions d
         JOIN discussion_participants dp ON d.id = dp.discussion_id
-        LEFT JOIN (
-            SELECT discussion_id, content, created_at, author_id,
-                   ROW_NUMBER() OVER (PARTITION BY discussion_id ORDER BY created_at DESC) as rn
-            FROM messages
-        ) m ON d.id = m.discussion_id AND m.rn = 1
         WHERE dp.user_id = ?
         ORDER BY d.last_message_at DESC, d.created_at DESC
     `;
@@ -1373,12 +1510,65 @@ app.post('/api/contacts', (req, res) => {
     });
 });
 
-// Start or Get Direct Discussion
-app.get('/api/discussions/start', (req, res) => {
-    const { userId1, userId2 } = req.query;
+app.post('/api/discussions/start', (req, res) => {
+    console.log('HIT /api/discussions/start');
+    console.log('Body:', req.body);
+    const { userId1, userId2 } = req.body;
     if (!userId1 || !userId2) return res.status(400).json({ error: "userId1 and userId2 are required" });
 
-    // Check if a direct discussion already exists between these two
+    // Helper to fetch and return single discussion
+    const returnDiscussion = (discussionId) => {
+        const sql = `
+            SELECT d.*, 
+                   (SELECT content FROM messages WHERE discussion_id = d.id ORDER BY created_at DESC LIMIT 1) as last_content,
+                   (SELECT created_at FROM messages WHERE discussion_id = d.id ORDER BY created_at DESC LIMIT 1) as last_at,
+                   (SELECT author_id FROM messages WHERE discussion_id = d.id ORDER BY created_at DESC LIMIT 1) as last_author_id
+            FROM discussions d
+            WHERE d.id = ?
+        `;
+        
+        db.get(sql, [discussionId], (err, disc) => {
+            if (err) return res.status(500).json({ error: err.message });
+            if (!disc) return res.status(404).json({ error: "Discussion not found after creation" });
+
+            // Get participants
+            const pSql = `
+                SELECT u.id, u.first_name, u.last_name, u.avatar_url, u.role
+                FROM discussion_participants dp
+                JOIN users u ON dp.user_id = u.id
+                WHERE dp.discussion_id = ?
+            `;
+            db.all(pSql, [discussionId], (err, participants) => {
+                 if (err) return res.status(500).json({ error: err.message });
+                 
+                 res.json({
+                    id: disc.id,
+                    groupId: disc.group_id,
+                    title: disc.title,
+                    createdAt: disc.created_at,
+                    participants: participants.map(p => ({
+                        id: p.id,
+                        firstName: p.first_name,
+                        lastName: p.last_name,
+                        avatarUrl: p.avatar_url,
+                        role: p.role
+                    })),
+                    lastMessage: disc.last_author_id ? {
+                        id: Math.random().toString(), 
+                        content: disc.last_content,
+                        timestamp: disc.last_at,
+                        senderId: disc.last_author_id,
+                        isRead: true, 
+                        type: 'text'
+                    } : undefined, 
+                    unreadCount: 0,
+                    updatedAt: disc.last_at || disc.created_at
+                 });
+            });
+        });
+    };
+
+    // Check if a direct discussion already exists
     const sqlCheck = `
         SELECT dp1.discussion_id
         FROM discussion_participants dp1
@@ -1392,8 +1582,7 @@ app.get('/api/discussions/start', (req, res) => {
         if (err) return res.status(500).json({ error: err.message });
 
         if (row) {
-            // Discussion exists, return it
-            res.json({ id: row.discussion_id });
+             returnDiscussion(row.discussion_id);
         } else {
             // Create new discussion
             const id = Math.random().toString(36).substr(2, 9);
@@ -1404,13 +1593,22 @@ app.get('/api/discussions/start', (req, res) => {
                     [id, userId1, createdAt, createdAt],
                     function(err) {
                         if (err) return res.status(500).json({ error: err.message });
-
-                        const stmt = db.prepare("INSERT INTO discussion_participants (discussion_id, user_id) VALUES (?, ?)");
-                        stmt.run(id, userId1);
-                        stmt.run(id, userId2);
-                        stmt.finalize();
-
-                        res.json({ id, isNew: true });
+                        
+                        // Insert participants sequentially to be safe and handle errors
+                        db.run("INSERT INTO discussion_participants (discussion_id, user_id) VALUES (?, ?)", [id, userId1], function(err) {
+                             if (err) {
+                                 console.error("Error adding participant 1:", err);
+                                 return res.status(500).json({ error: err.message });
+                             }
+                             
+                             db.run("INSERT INTO discussion_participants (discussion_id, user_id) VALUES (?, ?)", [id, userId2], function(err) {
+                                  if (err) {
+                                      console.error("Error adding participant 2:", err);
+                                      return res.status(500).json({ error: err.message });
+                                  }
+                                  returnDiscussion(id);
+                             });
+                        });
                     }
                 );
             });
@@ -1441,6 +1639,56 @@ app.post('/api/groups/:id/leave', (req, res) => {
     db.run("DELETE FROM group_members WHERE group_id = ? AND user_id = ?", [id, userId], function (err) {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ message: "Left group successfully" });
+    });
+});
+
+
+// Notifications
+app.get('/api/notifications/:userId', (req, res) => {
+    const { userId } = req.params;
+    db.all("SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC", [userId], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        
+        const mapped = rows.map(n => ({
+            id: n.id.toString(),
+            type: n.type,
+            title: n.title,
+            message: n.message,
+            isRead: n.is_read === 1,
+            createdAt: n.created_at,
+            link: n.link,
+            sender: n.sender_name ? {
+                name: n.sender_name,
+                avatarUrl: n.sender_avatar,
+                id: n.sender_id
+            } : undefined,
+            metadata: n.metadata ? JSON.parse(n.metadata) : undefined
+        }));
+        res.json(mapped);
+    });
+});
+
+app.post('/api/notifications/:id/read', (req, res) => {
+    const { id } = req.params;
+    db.run("UPDATE notifications SET is_read = 1 WHERE id = ?", [id], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: "Notification marked as read" });
+    });
+});
+
+app.post('/api/notifications/read-all', (req, res) => {
+    const { userId } = req.body;
+    db.run("UPDATE notifications SET is_read = 1 WHERE user_id = ?", [userId], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: "All notifications marked as read" });
+    });
+});
+
+app.delete('/api/notifications/:id', (req, res) => {
+    const { id } = req.params;
+    db.run("DELETE FROM notifications WHERE id = ?", [id], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: "Notification deleted" });
     });
 });
 

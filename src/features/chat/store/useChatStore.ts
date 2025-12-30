@@ -64,8 +64,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     fetchContacts: async (userId: string) => {
         try {
-            const data = await api.getContacts(userId);
-            set({ contacts: data.contacts });
+            const data = await api.getFollowing(userId);
+            set({ contacts: data.following });
         } catch (error) {
             console.error('Failed to fetch contacts:', error);
         }
@@ -128,14 +128,30 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     startChat: async (userId: string, targetId: string) => {
         try {
-            const data = await api.startDirectDiscussion(userId, targetId);
-            const discussionId = data.id;
-            // Refetch conversations to ensure it's in the list
-            await get().fetchConversations(userId);
-            set({ activeConversationId: discussionId });
+            const conversation = await api.startDirectDiscussion(userId, targetId);
+            const discussionId = conversation.id;
+
+            // Optimistically update conversations list
+            set((state) => {
+                const exists = state.conversations.some(c => c.id === discussionId);
+                if (exists) {
+                    return { activeConversationId: discussionId };
+                }
+                // Ensure the conversation matches the store structure if needed, 
+                // but our server update makes it match closely.
+                return {
+                    conversations: [conversation, ...state.conversations],
+                    activeConversationId: discussionId
+                };
+            });
+
+            // Refetch in background to ensure consistency
+            get().fetchConversations(userId).catch(console.error);
+
             return discussionId;
         } catch (error) {
             console.error('Failed to start chat:', error);
+            throw error;
         }
     }
 }));

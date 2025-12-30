@@ -16,7 +16,7 @@ const EventsPage = lazy(() => import('../features/events/pages/EventsPage').then
 const EventDetailsPage = lazy(() => import('../features/events/pages/EventDetailsPage').then(m => ({ default: m.EventDetailsPage })));
 const NotificationsPage = lazy(() => import('../features/notifications/pages/NotificationsPage').then(m => ({ default: m.NotificationsPage })));
 const ProfilePage = lazy(() => import('../features/profile/pages/ProfilePage').then(m => ({ default: m.ProfilePage })));
-const MessagesPage = lazy(() => import('../features/chat/pages/MessagesPage').then(m => ({ default: m.MessagesPage })));
+const MessagesPage = lazy(() => import('../features/chat/pages/SimpleMessagesPage').then(m => ({ default: m.SimpleMessagesPage })));
 const GroupListPage = lazy(() => import('../features/groups/pages/GroupListPage').then(m => ({ default: m.GroupListPage })));
 const GroupDetailsPage = lazy(() => import('../features/groups/pages/GroupDetailsPage').then(m => ({ default: m.GroupDetailsPage })));
 const TeacherDashboard = lazy(() => import('../features/teacher/pages/TeacherDashboard').then(m => ({ default: m.TeacherDashboard })));

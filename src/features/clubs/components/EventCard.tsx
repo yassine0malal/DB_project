@@ -6,7 +6,7 @@ import { ClubEvent } from '../types';
 import { cn } from '../../../utils/cn';
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
-import { useClubStore } from '../store/useClubStore';
+import { useEventStore } from '../../events/store/useEventStore';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { ShareModal } from '../../feed/components/ShareModal';
 
@@ -18,11 +18,11 @@ interface EventCardProps {
 
 export const EventCard = ({ event, clubName, vertical = false }: EventCardProps) => {
     const eventDate = new Date(event.date);
-    const { toggleParticipation } = useClubStore();
+    const { joinEvent, leaveEvent } = useEventStore();
     const { user } = useAuthStore();
     const [showShareModal, setShowShareModal] = useState(false);
 
-    const isParticipating = user ? event.attendees?.some(a => a.id === user.id) : false;
+    const isParticipating = event.isAttending;
 
     // Relative time helper (simplified)
     const getRelativeTime = (date: Date) => {
@@ -32,6 +32,17 @@ export const EventCard = ({ event, clubName, vertical = false }: EventCardProps)
         if (days === 0) return "Aujourd'hui";
         if (days === 1) return 'Demain';
         return `Dans ${days} jours`;
+    };
+
+    const handleParticipate = (e: React.MouseEvent) => {
+        e.preventDefault();
+        if (!user) return;
+
+        if (isParticipating) {
+            leaveEvent(event.id, user.id);
+        } else {
+            joinEvent(event.id, user.id);
+        }
     };
 
     const [imgError, setImgError] = useState(false);
@@ -104,14 +115,14 @@ export const EventCard = ({ event, clubName, vertical = false }: EventCardProps)
                                         {attendee.avatarUrl ? <img src={attendee.avatarUrl} className="h-full w-full object-cover" /> : attendee.firstName?.[0]}
                                     </div>
                                 ))}
-                                {event.attendees?.length > 3 && (
+                                {event.attendeesCount !== undefined && event.attendeesCount > 3 && (
                                     <div className="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-700 border-2 border-white dark:border-gray-800 flex items-center justify-center text-[8px] font-bold text-gray-500 dark:text-gray-300">
-                                        +{event.attendees.length - 3}
+                                        +{event.attendeesCount - 3}
                                     </div>
                                 )}
                             </div>
                             <span className="text-xs text-gray-500 font-medium">
-                                {event.attendees?.length > 0 ? `${event.attendees.length} participants` : 'Soyez le premier !'}
+                                {(event.attendeesCount || 0) > 0 ? `${event.attendeesCount} participants` : 'Soyez le premier !'}
                             </span>
                         </div>
                         <Button
@@ -142,7 +153,7 @@ export const EventCard = ({ event, clubName, vertical = false }: EventCardProps)
                                 ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/30"
                                 : "bg-blue-600 dark:bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-700 text-white"
                         )}
-                        onClick={() => user && toggleParticipation(event.id, user)}
+                        onClick={handleParticipate}
                     >
                         {isParticipating ? <Check className="h-4 w-4 mr-1" /> : null}
                         {isParticipating ? 'Inscrit' : 'Participer'}

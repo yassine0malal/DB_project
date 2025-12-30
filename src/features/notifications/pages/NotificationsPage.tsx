@@ -1,14 +1,23 @@
+import { useEffect } from 'react';
 import { isToday, isYesterday, isThisWeek } from 'date-fns';
 import { Bell, Search } from 'lucide-react';
 import { useNotificationStore } from '../store/useNotificationStore';
+import { useAuthStore } from '../../auth/store/useAuthStore';
 import { NotificationHeader } from '../components/NotificationHeader';
 import { NotificationFilters } from '../components/NotificationFilters';
 import { NotificationItem } from '../components/NotificationItem';
 import { Notification } from '../types';
 
 export const NotificationsPage = () => {
-    const { getFilteredNotifications, searchQuery, filter } = useNotificationStore();
+    const { getFilteredNotifications, searchQuery, filter, fetchNotifications } = useNotificationStore();
+    const { user } = useAuthStore();
     const notifications = getFilteredNotifications();
+
+    useEffect(() => {
+        if (user) {
+            fetchNotifications(user.id);
+        }
+    }, [user, fetchNotifications]);
 
     // Grouping Logic
     const grouped = notifications.reduce((acc, note) => {

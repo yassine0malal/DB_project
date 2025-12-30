@@ -1,9 +1,11 @@
 import { Bell, CheckCheck, Settings } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { useNotificationStore } from '../store/useNotificationStore';
+import { useAuthStore } from '../../auth/store/useAuthStore';
 
 export const NotificationHeader = () => {
     const { markAllAsRead } = useNotificationStore();
+    const { user } = useAuthStore();
 
     return (
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
@@ -15,7 +17,13 @@ export const NotificationHeader = () => {
                 <p className="text-gray-500 text-sm mt-1">Restez informé de toutes vos activités</p>
             </div>
             <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={markAllAsRead} className="gap-2">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => user && markAllAsRead(user.id)}
+                    className="gap-2"
+                    disabled={!user}
+                >
                     <CheckCheck className="h-4 w-4" />
                     Tout marquer comme lu
                 </Button>

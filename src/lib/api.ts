@@ -20,7 +20,16 @@ export const api = {
     getFollowing: async (userId: string) => {
         const res = await fetch(`${API_URL}/users/${userId}/following`);
         if (!res.ok) throw new Error('Failed to fetch following');
-        return res.json();
+        const data = await res.json();
+        return {
+            following: data.following.map((u: any) => ({
+                id: u.id,
+                firstName: u.first_name,
+                lastName: u.last_name,
+                avatarUrl: u.avatar_url,
+                role: u.role
+            }))
+        };
     },
 
     getContacts: async (userId: string) => {
@@ -39,8 +48,19 @@ export const api = {
         return res.json();
     },
 
+    // Generic Chat/Discussions
+    getDiscussions: async (userId: string) => {
+        const res = await fetch(`${API_URL}/discussions?userId=${userId}`, { cache: 'no-store' });
+        if (!res.ok) throw new Error('Failed to fetch discussions');
+        return res.json();
+    },
+
     startDirectDiscussion: async (userId1: string, userId2: string) => {
-        const res = await fetch(`${API_URL}/discussions/start?userId1=${userId1}&userId2=${userId2}`);
+        const res = await fetch(`${API_URL}/discussions/start`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId1, userId2 })
+        });
         if (!res.ok) throw new Error('Failed to start discussion');
         return res.json();
     },
@@ -329,7 +349,7 @@ export const api = {
 
     // Generic Chat/Discussions
     getDiscussions: async (userId: string) => {
-        const res = await fetch(`${API_URL}/discussions?userId=${userId}`);
+        const res = await fetch(`${API_URL}/discussions?userId=${userId}`, { cache: 'no-store' });
         if (!res.ok) throw new Error('Failed to fetch discussions');
         return res.json();
     },
