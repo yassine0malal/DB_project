@@ -737,6 +737,7 @@ app.get('/api/clubs/:id', (req, res) => {
                         description: e.description,
                         date: e.start_time,
                         location: e.location,
+                        coverUrl: e.cover_url,
                         status: e.status,
                         isOnline: e.location && (e.location.toLowerCase().includes('zoom') || e.location.toLowerCase().includes('discord') || e.location.toLowerCase().includes('enligne'))
                     }));
@@ -822,6 +823,7 @@ app.get('/api/events', (req, res) => {
             description: row.description,
             date: row.start_time ? row.start_time.replace(' ', 'T') + 'Z' : new Date().toISOString(), // Map start_time to date
             location: row.location,
+            coverUrl: row.cover_url,
             status: row.status,
             clubName: row.club_name,
             clubLogo: row.club_logo,
