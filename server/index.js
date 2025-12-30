@@ -8,11 +8,22 @@ const PORT = 3000;
 app.use(cors());
 app.use(express.json());
 
-// ===== SIMPLE CHAT ROUTES =====
-// Get messages between two users
+console.log('\n===========================================');
+console.log('SERVEUR DEMARRE - Routes messagerie actives');
+console.log('===========================================\n');
+
+// ===== ROUTES MESSAGERIE ULTRA-SIMPLES =====
+// Route test pour vérifier que le serveur fonctionne
+app.get('/api/test', (req, res) => {
+    console.log('✓ Route /api/test OK');
+    res.json({ message: 'Serveur opérationnel', timestamp: new Date().toISOString() });
+});
+
+// Récupérer les messages entre deux utilisateurs
 app.get('/api/simple-chat/messages/:userId1/:userId2', (req, res) => {
-    console.log('HIT: Get messages between', req.params.userId1, req.params.userId2);
     const { userId1, userId2 } = req.params;
+    console.log(`\n>>> GET messages entre ${userId1} et ${userId2}`);
+
     
     const sql = `
         SELECT m.id, m.content, m.created_at, m.author_id, 
