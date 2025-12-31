@@ -8,9 +8,123 @@ const PORT = 3000;
 app.use(cors());
 app.use(express.json());
 
-console.log('\n===========================================');
 console.log('SERVEUR DEMARRE - Routes messagerie actives');
 console.log('===========================================\n');
+
+// Initialize Follows Table
+db.run(`
+    CREATE TABLE IF NOT EXISTS user_follows (
+        follower_id TEXT,
+        following_id TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (follower_id, following_id),
+        FOREIGN KEY(follower_id) REFERENCES users(id),
+        FOREIGN KEY(following_id) REFERENCES users(id)
+    )
+`, (err) => {
+    if (err) console.error("Error creating user_follows table:", err);
+    else console.log("✓ Table user_follows checked/created");
+});
+
+// ===== TRENDS & SUGGESTIONS =====
+
+app.get('/api/trends/hashtags', (req, res) => {
+    // Scan recent 50 posts for hashtags
+    db.all("SELECT content FROM posts ORDER BY created_at DESC LIMIT 50", [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+
+        const hashtagCounts = {};
+        rows.forEach(row => {
+            if (!row.content) return;
+            const matches = row.content.match(/#[a-zA-Z0-9_]+/g);
+            if (matches) {
+                matches.forEach(tag => {
+                    const normalizedTag = tag.toLowerCase();
+                    hashtagCounts[normalizedTag] = (hashtagCounts[normalizedTag] || 0) + 1;
+                });
+            }
+        });
+
+        const trends = Object.entries(hashtagCounts)
+            .map(([tag, count]) => ({ tag, count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5); // Start with top 5
+
+        // Fallback if no real tags found (for demo purposes)
+        if (trends.length === 0) {
+           return res.json({ trends: [
+               { tag: '#ENSET', count: 12 },
+               { tag: '#Informatique', count: 8 },
+               { tag: '#Stage', count: 5 },
+               { tag: '#Hackathon', count: 3 },
+               { tag: '#ClubInfo', count: 2 }
+           ]});
+        }
+
+        res.json({ trends });
+    });
+});
+
+app.get('/api/users/suggestions', (req, res) => {
+    const { excludeId } = req.query;
+    
+    const sql = `
+        SELECT u.id, u.first_name, u.last_name, u.avatar_url, u.role 
+        FROM users u
+        WHERE u.id != ? 
+        AND NOT EXISTS (
+            SELECT 1 FROM user_follows 
+            WHERE follower_id = ? AND following_id = u.id
+        )
+        ORDER BY RANDOM() LIMIT 5
+    `;
+
+    db.all(sql, [excludeId || '', excludeId || ''], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        
+        const suggestions = rows.map(u => ({
+            id: u.id,
+            firstName: u.first_name,
+            lastName: u.last_name,
+            avatarUrl: u.avatar_url,
+            role: u.role,
+            mutualFriends: Math.floor(Math.random() * 10) // Mock mutual friends
+        }));
+        
+        res.json({ suggestions });
+    });
+});
+
+// Follow User
+app.post('/api/users/:id/follow', (req, res) => {
+    const { id } = req.params; // User to follow
+    const { userId } = req.body; // Me
+
+    if (!userId) return res.status(400).json({ error: "Missing userId" });
+
+    const sql = "INSERT OR IGNORE INTO user_follows (follower_id, following_id) VALUES (?, ?)";
+    db.run(sql, [userId, id], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: "Followed successfully", following: true });
+    });
+});
+
+// Unfollow User
+app.delete('/api/users/:id/follow', (req, res) => {
+    const { id } = req.params; // User to unfollow
+    const { userId } = req.query; // Me (passed as query param for delete usually, or body if allowed)
+
+    // Using query param for userId in DELETE is common practice since body is sometimes ignored
+    if (!userId) return res.status(400).json({ error: "Missing userId" });
+
+    const sql = "DELETE FROM user_follows WHERE follower_id = ? AND following_id = ?";
+    db.run(sql, [userId, id], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: "Unfollowed successfully", following: false });
+    });
+});
+
+
 
 // ===== ROUTES MESSAGERIE ULTRA-SIMPLES =====
 // Route test pour vérifier que le serveur fonctionne
