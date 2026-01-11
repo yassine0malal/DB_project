@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui
 import { UserPlus, User as UserIcon, Check } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { useAuthStore } from '../../auth/store/useAuthStore';
+import { Link } from 'react-router-dom';
 
 interface SuggestedUser {
     id: string;
@@ -98,27 +99,27 @@ export const SuggestedUsers = () => {
                 <div className="space-y-4">
                     {users.map((suggestedUser) => (
                         <div key={suggestedUser.id} className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden flex items-center justify-center border border-gray-200 dark:border-gray-600">
+                            <Link to={`/profile/${suggestedUser.id}`} className="flex items-center gap-2 group cursor-pointer overflow-hidden">
+                                <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden flex items-center justify-center border border-gray-200 dark:border-gray-600 flex-shrink-0 transition-transform group-hover:scale-105">
                                     {suggestedUser.avatarUrl ? (
                                         <img src={suggestedUser.avatarUrl} alt={suggestedUser.firstName} className="h-full w-full object-cover" />
                                     ) : (
                                         <UserIcon className="h-5 w-5 text-gray-500" />
                                     )}
                                 </div>
-                                <div>
-                                    <p className="font-semibold text-sm text-gray-900 dark:text-gray-100 leading-tight">
+                                <div className="min-w-0">
+                                    <p className="font-semibold text-sm text-gray-900 dark:text-gray-100 leading-tight truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                                         {suggestedUser.firstName} {suggestedUser.lastName}
                                     </p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">
-                                        {suggestedUser.role} • {suggestedUser.mutualFriends} amis communs
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 capitalize truncate">
+                                        {suggestedUser.role} • {suggestedUser.mutualFriends} amis
                                     </p>
                                 </div>
-                            </div>
+                            </Link>
                             <Button
                                 size="icon"
                                 variant={suggestedUser.isFollowed ? "default" : "ghost"}
-                                className={`h-8 w-8 rounded-full ${suggestedUser.isFollowed ? 'bg-green-500 hover:bg-green-600 text-white' : 'hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-900/20'}`}
+                                className={`h-8 w-8 rounded-full flex-shrink-0 ${suggestedUser.isFollowed ? 'bg-green-500 hover:bg-green-600 text-white' : 'hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-900/20'}`}
                                 onClick={() => handleFollow(suggestedUser)}
                             >
                                 {suggestedUser.isFollowed ? <Check className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
